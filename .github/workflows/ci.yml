@@ -17,15 +17,21 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # Use `npm install` (not `npm ci`) because npm has an open bug
-      # (npm/cli#4828) where optional platform-specific deps captured in
-      # package-lock.json don't get installed on a different OS than the
-      # one that generated the lockfile. `npm install` re-resolves the
-      # correct platform binary (e.g. @rollup/rollup-linux-x64-gnu on
-      # Ubuntu when the lockfile was generated on macOS). Switch back
-      # to `npm ci` once that npm bug is fixed.
+      # Regenerate the lockfile here because npm has an open bug
+      # (npm/cli#4828) where platform-specific optional deps captured in
+      # package-lock.json fail to install on a different OS than the one
+      # that generated the lockfile. Our committed lockfile is generated
+      # on macOS, so on Ubuntu CI the Linux build of rollup
+      # (@rollup/rollup-linux-x64-gnu, an optional dep transitively
+      # needed by vitest) is missing and the Build step crashes. Deleting
+      # the lockfile and running `npm install` here re-resolves the
+      # correct platform binaries. We lose byte-deterministic builds in
+      # CI as a trade-off; if we ever need that back, generate the
+      # lockfile inside a Linux container locally and commit it.
       - name: Install
-        run: npm install --no-audit --no-fund
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
 
       - name: Build Enabi client from endpoints.json
         run: npm run build:client
