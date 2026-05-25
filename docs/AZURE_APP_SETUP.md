@@ -55,7 +55,6 @@ Without this, the device-code fallback flow will not work, and some employees on
 2. The page already lists `User.Read` (Microsoft Graph, delegated) by default. Leave it.
 3. Click **+ Add a permission → Microsoft Graph → Delegated permissions**.
 4. Search for and check each of these. They are case-sensitive in the search but the UI normalizes them:
-
    - `Calendars.ReadWrite`
    - `Contacts.ReadWrite`
    - `Mail.ReadWrite`

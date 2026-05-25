@@ -26,7 +26,14 @@ const allowlistTools = [...allowlistSrc.matchAll(/'([a-z][a-z0-9-]+)'/gi)]
   .filter((t) => /^[a-z]+(-[a-z0-9]+)+$/.test(t) || ['login', 'logout'].includes(t));
 
 const endpointTools = new Set(endpoints.map((ep) => ep.toolName));
-const authTools = ['login', 'logout', 'verify-login', 'list-accounts', 'select-account', 'remove-account'];
+const authTools = [
+  'login',
+  'logout',
+  'verify-login',
+  'list-accounts',
+  'select-account',
+  'remove-account',
+];
 const registeredTools = new Set([...endpointTools, ...authTools]);
 
 const HIERARCHY = {
@@ -55,10 +62,10 @@ const removedTools = [...baselineTools].filter((t) => !registeredTools.has(t)).s
 const addedScopes = [...requestedScopes].filter((s) => !baselineScopes.has(s)).sort();
 const removedScopes = [...baselineScopes].filter((s) => !requestedScopes.has(s)).sort();
 
-const allowlistMissing = [...registeredTools].filter((t) => !allowlistSrc.includes(`'${t}'`)).sort();
-const allowlistExtra = [...new Set(allowlistTools)]
-  .filter((t) => !registeredTools.has(t))
+const allowlistMissing = [...registeredTools]
+  .filter((t) => !allowlistSrc.includes(`'${t}'`))
   .sort();
+const allowlistExtra = [...new Set(allowlistTools)].filter((t) => !registeredTools.has(t)).sort();
 
 let failed = false;
 function fail(label, items) {
@@ -81,4 +88,6 @@ if (failed) {
   process.exit(1);
 }
 
-console.log(`✓ Capability audit passed: ${registeredTools.size} tools, ${requestedScopes.size} scopes match baseline.`);
+console.log(
+  `✓ Capability audit passed: ${registeredTools.size} tools, ${requestedScopes.size} scopes match baseline.`
+);

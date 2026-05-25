@@ -14,41 +14,41 @@ Tools are registered from `src/endpoints.json` (the central manifest). Each entr
 
 ### By functional area
 
-| Area | Count | Keep for Enabi? |
-|------|-------|-----------------|
-| **Mail** | 42 | YES |
-| **Calendar** | 31 | YES |
-| **Contacts** | 5 | YES |
-| Teams | 36 | NO |
-| Files/OneDrive | 27 | NO |
-| SharePoint | 23 | NO |
-| Excel | 15 | NO |
-| Groups | 14 | NO |
-| Users/People | 11 | NO |
-| Planner | 11 | NO |
-| ToDo | 9 | NO |
-| OneNote | 10 | NO |
-| Meetings/Rooms | 21 | NO |
-| Subscriptions | 6 | NO |
-| Search | 1 | NO |
-| Outlook misc | 3 | PARTIAL (categories yes, sensitivity labels no) |
-| Places | 1 | NO |
-| Other | 4 | NO |
+| Area           | Count | Keep for Enabi?                                 |
+| -------------- | ----- | ----------------------------------------------- |
+| **Mail**       | 42    | YES                                             |
+| **Calendar**   | 31    | YES                                             |
+| **Contacts**   | 5     | YES                                             |
+| Teams          | 36    | NO                                              |
+| Files/OneDrive | 27    | NO                                              |
+| SharePoint     | 23    | NO                                              |
+| Excel          | 15    | NO                                              |
+| Groups         | 14    | NO                                              |
+| Users/People   | 11    | NO                                              |
+| Planner        | 11    | NO                                              |
+| ToDo           | 9     | NO                                              |
+| OneNote        | 10    | NO                                              |
+| Meetings/Rooms | 21    | NO                                              |
+| Subscriptions  | 6     | NO                                              |
+| Search         | 1     | NO                                              |
+| Outlook misc   | 3     | PARTIAL (categories yes, sensitivity labels no) |
+| Places         | 1     | NO                                              |
+| Other          | 4     | NO                                              |
 
 ### Auth/utility tools (registered in code, not endpoints.json)
 
-| Tool | Source | Keep? |
-|------|--------|-------|
-| `login` | auth-tools.ts | YES |
-| `logout` | auth-tools.ts | YES |
-| `verify-login` | auth-tools.ts | YES |
-| `list-accounts` | auth-tools.ts | YES |
-| `select-account` | auth-tools.ts | YES |
-| `remove-account` | auth-tools.ts | YES |
-| `parse-teams-url` | graph-tools.ts | NO |
-| `search-tools` | graph-tools.ts (discovery mode) | NO |
-| `get-tool-schema` | graph-tools.ts (discovery mode) | NO |
-| `execute-tool` | graph-tools.ts (discovery mode) | NO |
+| Tool              | Source                          | Keep? |
+| ----------------- | ------------------------------- | ----- |
+| `login`           | auth-tools.ts                   | YES   |
+| `logout`          | auth-tools.ts                   | YES   |
+| `verify-login`    | auth-tools.ts                   | YES   |
+| `list-accounts`   | auth-tools.ts                   | YES   |
+| `select-account`  | auth-tools.ts                   | YES   |
+| `remove-account`  | auth-tools.ts                   | YES   |
+| `parse-teams-url` | graph-tools.ts                  | NO    |
+| `search-tools`    | graph-tools.ts (discovery mode) | NO    |
+| `get-tool-schema` | graph-tools.ts (discovery mode) | NO    |
+| `execute-tool`    | graph-tools.ts (discovery mode) | NO    |
 
 ### Tools to keep (78 endpoint tools + 6 auth tools = 84 total)
 
@@ -70,25 +70,25 @@ Note: shared mailbox tools (get-shared-mailbox-message, list-shared-mailbox-mess
 
 ### All personal (non-org) scopes requested upstream
 
-| Scope | Used by | Needed for Enabi? |
-|-------|---------|-------------------|
-| `User.Read` | get-current-user, get-my-profile-photo | YES (identity) |
-| `Mail.Read` | 12 mail read tools | YES |
-| `Mail.ReadWrite` | 14 mail write tools | YES |
-| `Mail.Send` | send-mail, forward, reply tools | YES |
-| `MailboxSettings.Read` | get-mailbox-settings, list-mail-rules, list-outlook-categories | YES |
-| `MailboxSettings.ReadWrite` | create/update/delete mail rules, update-mailbox-settings, create-outlook-category | YES |
-| `Calendars.Read` | 11 calendar read tools | YES |
-| `Calendars.ReadWrite` | 12 calendar write tools | YES |
-| `Contacts.Read` | 2 contact read tools | YES |
-| `Contacts.ReadWrite` | 3 contact write tools | YES |
-| `Files.Read` | 12 OneDrive/Excel read tools | NO |
-| `Files.ReadWrite` | 15 OneDrive/Excel write tools | NO |
-| `Tasks.Read` | 7 Planner/ToDo read tools | NO |
-| `Tasks.ReadWrite` | 8 Planner/ToDo write tools | NO |
-| `Notes.Create` | 4 OneNote create tools | NO |
-| `Notes.Read` | 4 OneNote read tools | NO |
-| `Notes.ReadWrite` | 1 OneNote delete tool | NO |
+| Scope                       | Used by                                                                           | Needed for Enabi? |
+| --------------------------- | --------------------------------------------------------------------------------- | ----------------- |
+| `User.Read`                 | get-current-user, get-my-profile-photo                                            | YES (identity)    |
+| `Mail.Read`                 | 12 mail read tools                                                                | YES               |
+| `Mail.ReadWrite`            | 14 mail write tools                                                               | YES               |
+| `Mail.Send`                 | send-mail, forward, reply tools                                                   | YES               |
+| `MailboxSettings.Read`      | get-mailbox-settings, list-mail-rules, list-outlook-categories                    | YES               |
+| `MailboxSettings.ReadWrite` | create/update/delete mail rules, update-mailbox-settings, create-outlook-category | YES               |
+| `Calendars.Read`            | 11 calendar read tools                                                            | YES               |
+| `Calendars.ReadWrite`       | 12 calendar write tools                                                           | YES               |
+| `Contacts.Read`             | 2 contact read tools                                                              | YES               |
+| `Contacts.ReadWrite`        | 3 contact write tools                                                             | YES               |
+| `Files.Read`                | 12 OneDrive/Excel read tools                                                      | NO                |
+| `Files.ReadWrite`           | 15 OneDrive/Excel write tools                                                     | NO                |
+| `Tasks.Read`                | 7 Planner/ToDo read tools                                                         | NO                |
+| `Tasks.ReadWrite`           | 8 Planner/ToDo write tools                                                        | NO                |
+| `Notes.Create`              | 4 OneNote create tools                                                            | NO                |
+| `Notes.Read`                | 4 OneNote read tools                                                              | NO                |
+| `Notes.ReadWrite`           | 1 OneNote delete tool                                                             | NO                |
 
 ### Minimum scopes for Enabi (mail + calendar + contacts)
 
@@ -144,6 +144,7 @@ The build will not break from endpoint removal — tools are data-driven, not in
 ### Generated client
 
 The `src/generated/` directory contains:
+
 - `hack.ts` — A minimal Zodios-compatible wrapper. Parses path params from endpoint paths.
 - `endpoint-types.ts` — TypeScript interfaces for Endpoint and Parameter.
 
@@ -156,6 +157,7 @@ The actual client code is generated by `bin/generate-graph-client.mjs` which dow
 ### No telemetry found.
 
 The codebase makes external calls **only to**:
+
 - `graph.microsoft.com` (Graph API)
 - `login.microsoftonline.com` (Azure AD OAuth)
 - `login.chinacloudapi.cn` / `microsoftgraph.chinacloudapi.cn` (China cloud, only if configured)
@@ -173,33 +175,34 @@ Contains only a schema URL (`https://glama.ai/mcp/schemas/server.json`) and main
 
 ### Runtime dependencies
 
-| Package | Version | Purpose | Risk |
-|---------|---------|---------|------|
-| `@azure/msal-node` | ^3.8.0 | Microsoft OAuth (MSAL) | Low — official Microsoft SDK |
-| `@modelcontextprotocol/sdk` | ^1.29.0 | MCP protocol | Low — official Anthropic SDK |
-| `@toon-format/toon` | ^0.8.0 | Token-compressed output format | Low risk, **can remove** (only used with `--toon` flag) |
-| `commander` | ^11.1.0 | CLI argument parsing | Low — standard |
-| `dotenv` | ^17.0.1 | .env file loading | Low — standard |
-| `express` | ^5.2.1 | HTTP server (for `--http` mode) | Medium — large surface area, but Express 5 is modern. **Not needed for stdio mode.** |
-| `js-yaml` | ^4.1.0 | YAML parsing | Low — used by generator, possibly unused at runtime |
-| `open` | ^11.0.0 | Opens browser for interactive auth | Low — standard |
-| `winston` | ^3.17.0 | Logging | Low — standard |
-| `zod` | ^3.24.2 | Schema validation | Low — standard |
-| `zod-to-json-schema` | ^3.25.1 | Zod→JSON Schema conversion | Low — standard |
+| Package                     | Version | Purpose                            | Risk                                                                                 |
+| --------------------------- | ------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `@azure/msal-node`          | ^3.8.0  | Microsoft OAuth (MSAL)             | Low — official Microsoft SDK                                                         |
+| `@modelcontextprotocol/sdk` | ^1.29.0 | MCP protocol                       | Low — official Anthropic SDK                                                         |
+| `@toon-format/toon`         | ^0.8.0  | Token-compressed output format     | Low risk, **can remove** (only used with `--toon` flag)                              |
+| `commander`                 | ^11.1.0 | CLI argument parsing               | Low — standard                                                                       |
+| `dotenv`                    | ^17.0.1 | .env file loading                  | Low — standard                                                                       |
+| `express`                   | ^5.2.1  | HTTP server (for `--http` mode)    | Medium — large surface area, but Express 5 is modern. **Not needed for stdio mode.** |
+| `js-yaml`                   | ^4.1.0  | YAML parsing                       | Low — used by generator, possibly unused at runtime                                  |
+| `open`                      | ^11.0.0 | Opens browser for interactive auth | Low — standard                                                                       |
+| `winston`                   | ^3.17.0 | Logging                            | Low — standard                                                                       |
+| `zod`                       | ^3.24.2 | Schema validation                  | Low — standard                                                                       |
+| `zod-to-json-schema`        | ^3.25.1 | Zod→JSON Schema conversion         | Low — standard                                                                       |
 
 ### Optional dependencies
 
-| Package | Purpose | Risk |
-|---------|---------|------|
-| `@azure/identity` | Azure Key Vault auth | Low — only if Key Vault configured |
-| `@azure/keyvault-secrets` | Key Vault secret retrieval | Low — only if Key Vault configured |
-| `keytar` | OS keychain for token storage | Medium — native binary, can fail on some platforms. Falls back to file storage. |
+| Package                   | Purpose                       | Risk                                                                            |
+| ------------------------- | ----------------------------- | ------------------------------------------------------------------------------- |
+| `@azure/identity`         | Azure Key Vault auth          | Low — only if Key Vault configured                                              |
+| `@azure/keyvault-secrets` | Key Vault secret retrieval    | Low — only if Key Vault configured                                              |
+| `keytar`                  | OS keychain for token storage | Medium — native binary, can fail on some platforms. Falls back to file storage. |
 
 ### Assessment
 
 No abandoned or suspicious packages. The dependency tree is reasonable for an MCP server.
 
 Candidates for removal in our fork:
+
 - `@toon-format/toon` — experimental feature we won't use
 - `js-yaml` — check if used at runtime (may only be generator dependency)
 - `express` — only needed for HTTP mode. If we're stdio-only, could remove but increases future friction.
@@ -211,6 +214,7 @@ Candidates for removal in our fork:
 ### Token storage
 
 MSAL token cache is stored in **two locations** (newest wins):
+
 1. **OS keychain** via `keytar` (if available) — service: `ms-365-mcp-server`, account: `msal-token-cache`
 2. **File fallback:** `<project-root>/.token-cache.json` with mode `0o600`
 
@@ -221,6 +225,7 @@ Selected account ID stored similarly (keychain or `.selected-account.json`).
 ### Secrets (app registration)
 
 Read from environment variables:
+
 - `MS365_MCP_CLIENT_ID` — Azure app client ID
 - `MS365_MCP_TENANT_ID` — Azure AD tenant ID
 - `MS365_MCP_CLIENT_SECRET` — optional, for confidential client (OBO mode)
@@ -229,12 +234,12 @@ Alternative: Azure Key Vault via `MS365_MCP_KEYVAULT_URL`.
 
 ### What's written to disk
 
-| File | Contents | Risk |
-|------|----------|------|
-| `.token-cache.json` | MSAL token cache (access + refresh tokens) | **HIGH** — contains live tokens. File permissions are 0o600, but location defaults to project root. |
-| `.selected-account.json` | Account ID selection | Low |
-| `~/.ms-365-mcp-server/logs/mcp-server.log` | Operation logs | Medium — may contain PII (email addresses, calendar event details) |
-| `~/.ms-365-mcp-server/logs/error.log` | Error logs | Low |
+| File                                       | Contents                                   | Risk                                                                                                |
+| ------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `.token-cache.json`                        | MSAL token cache (access + refresh tokens) | **HIGH** — contains live tokens. File permissions are 0o600, but location defaults to project root. |
+| `.selected-account.json`                   | Account ID selection                       | Low                                                                                                 |
+| `~/.ms-365-mcp-server/logs/mcp-server.log` | Operation logs                             | Medium — may contain PII (email addresses, calendar event details)                                  |
+| `~/.ms-365-mcp-server/logs/error.log`      | Error logs                                 | Low                                                                                                 |
 
 ### Concerns
 
@@ -289,11 +294,11 @@ Alternative: Azure Key Vault via `MS365_MCP_KEYVAULT_URL`.
 
 ## 9. Tool count summary
 
-| | Upstream | Enabi (proposed) |
-|---|---------|-----------------|
-| Graph API tools | 270 | ~80 |
-| Auth tools | 6 | 6 |
-| Utility tools | 1-3 | 0 |
-| OAuth scopes (personal) | 17 | 7 |
-| OAuth scopes (org) | 45 | 0 |
-| **Total tools** | **~279** | **~86** |
+|                         | Upstream | Enabi (proposed) |
+| ----------------------- | -------- | ---------------- |
+| Graph API tools         | 270      | ~80              |
+| Auth tools              | 6        | 6                |
+| Utility tools           | 1-3      | 0                |
+| OAuth scopes (personal) | 17       | 7                |
+| OAuth scopes (org)      | 45       | 0                |
+| **Total tools**         | **~279** | **~86**          |
