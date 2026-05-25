@@ -4,16 +4,16 @@ The Enabi fork requests **8 scopes**. Down from upstream's possible 17 personal 
 
 ## Scopes requested at login
 
-| Scope | Why we request it | Tools that use it |
-|-------|-------------------|-------------------|
-| `User.Read` | Identify the signed-in user (email, display name) | `get-current-user` |
-| `Mail.ReadWrite` | Read and modify mail in the signed-in user's mailbox. Subsumes `Mail.Read`. | All 32 personal-mailbox mail tools |
-| `Mail.Send` | Send mail as the signed-in user, including replies and forwards | `send-mail`, `forward-mail-message`, `reply-mail-message`, `reply-all-mail-message`, `send-draft-message` |
-| `Mail.Read.Shared` | **Read shared mailboxes** (e.g. `support@enabi.io`). Read-only — sending from shared mailboxes is intentionally NOT exposed. | `get-shared-mailbox-message`, `list-shared-mailbox-messages`, `list-shared-mailbox-folder-messages` |
-| `MailboxSettings.ReadWrite` | Manage mail rules, focused-inbox overrides, signature, time zone. Subsumes `MailboxSettings.Read`. | mail rules, mailbox settings, outlook categories tools |
-| `Calendars.ReadWrite` | Read and write the signed-in user's calendars. Subsumes `Calendars.Read`. | All 26 personal-calendar tools |
-| `Contacts.ReadWrite` | Read and write personal contacts. Subsumes `Contacts.Read`. | All 5 contact tools |
-| `offline_access` | Issue a refresh token so the user does not have to log in again every hour. Injected silently by the server, never advertised in OAuth metadata. | All tools (token refresh) |
+| Scope                       | Why we request it                                                                                                                                | Tools that use it                                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `User.Read`                 | Identify the signed-in user (email, display name)                                                                                                | `get-current-user`                                                                                        |
+| `Mail.ReadWrite`            | Read and modify mail in the signed-in user's mailbox. Subsumes `Mail.Read`.                                                                      | All 32 personal-mailbox mail tools                                                                        |
+| `Mail.Send`                 | Send mail as the signed-in user, including replies and forwards                                                                                  | `send-mail`, `forward-mail-message`, `reply-mail-message`, `reply-all-mail-message`, `send-draft-message` |
+| `Mail.Read.Shared`          | **Read shared mailboxes** (e.g. `support@enabi.io`). Read-only — sending from shared mailboxes is intentionally NOT exposed.                     | `get-shared-mailbox-message`, `list-shared-mailbox-messages`, `list-shared-mailbox-folder-messages`       |
+| `MailboxSettings.ReadWrite` | Manage mail rules, focused-inbox overrides, signature, time zone. Subsumes `MailboxSettings.Read`.                                               | mail rules, mailbox settings, outlook categories tools                                                    |
+| `Calendars.ReadWrite`       | Read and write the signed-in user's calendars. Subsumes `Calendars.Read`.                                                                        | All 26 personal-calendar tools                                                                            |
+| `Contacts.ReadWrite`        | Read and write personal contacts. Subsumes `Contacts.Read`.                                                                                      | All 5 contact tools                                                                                       |
+| `offline_access`            | Issue a refresh token so the user does not have to log in again every hour. Injected silently by the server, never advertised in OAuth metadata. | All tools (token refresh)                                                                                 |
 
 ## Explicitly NOT requested
 

@@ -3,284 +3,220 @@
     "pathPattern": "/me/events/{event-id}/accept",
     "method": "post",
     "toolName": "accept-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Accepts a meeting invitation. Optional body: { sendResponse: true, comment: 'I will attend.' }. Set sendResponse to false to accept silently without notifying the organizer."
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments",
     "method": "post",
     "toolName": "add-mail-attachment",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Max 3MB. Body requires @odata.type: {\"@odata.type\": \"#microsoft.graph.fileAttachment\", \"name\": \"file.pdf\", \"contentBytes\": \"<base64>\"}."
   },
   {
     "pathPattern": "/me/events/{event-id}/cancel",
     "method": "post",
     "toolName": "cancel-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Cancels a meeting (organizer only) and sends a cancellation message to all attendees. Body: { Comment (optional string, custom message) }. Use this instead of delete-calendar-event when you want attendees to see 'Canceled' in their calendar. Attendees calling this get HTTP 400 \u2014 they should use decline-calendar-event instead."
   },
   {
     "pathPattern": "/me/messages/{message-id}/copy",
     "method": "post",
     "toolName": "copy-mail-message",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Copies a message to another mail folder. Body: { DestinationId: '<mailFolder-id or well-known name like inbox, archive, junkemail>' }. Returns the newly created message (with a new id) in the destination folder. For moving instead of copying, use move-mail-message."
   },
   {
     "pathPattern": "/me/calendars",
     "method": "post",
     "toolName": "create-calendar",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Creates a new personal calendar. Body: { name: 'My Calendar', color: 'auto' }. Available colors: auto, lightBlue, lightGreen, lightOrange, lightGray, lightYellow, lightTeal, lightPink, lightBrown, lightRed, maxColor."
   },
   {
     "pathPattern": "/me/events",
     "method": "post",
     "toolName": "create-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
   },
   {
     "pathPattern": "/me/messages",
     "method": "post",
     "toolName": "create-draft-email",
-    "scopes": [
-      "Mail.ReadWrite"
-    ]
+    "scopes": ["Mail.ReadWrite"]
   },
   {
     "pathPattern": "/me/inferenceClassification/overrides",
     "method": "post",
     "toolName": "create-focused-inbox-override",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Creates a Focused Inbox override for a sender. Body: { classifyAs: 'focused', senderEmailAddress: { name: 'Display Name', address: 'sender@example.com' } }. classifyAs must be 'focused' or 'other'. If an override already exists for that SMTP address, POST updates the existing override's name and classifyAs (use this to rename a sender). Resolve the sender's address with list-users or by reading a recent mail header \u2014 do not invent SMTP addresses."
   },
   {
     "pathPattern": "/me/messages/{message-id}/createForward",
     "method": "post",
     "toolName": "create-forward-draft",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Create a forward draft (does not send). Useful when user wants to review before sending."
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments/createUploadSession",
     "method": "post",
     "toolName": "create-mail-attachment-upload-session",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "For large attachments (3-150MB). Body: { AttachmentItem: { attachmentType: 'file', name: 'report.pdf', size: 5000000 } }. Returns a pre-authenticated uploadUrl for direct PUT of file bytes."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/childFolders",
     "method": "post",
     "toolName": "create-mail-child-folder",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Creates a subfolder inside an existing mail folder. Use list-mail-folders or list-mail-child-folders to find the parent folder ID."
   },
   {
     "pathPattern": "/me/mailFolders",
     "method": "post",
     "toolName": "create-mail-folder",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Creates a top-level mail folder. Use create-mail-child-folder to create a subfolder inside an existing folder. Use list-mail-folders to find existing folder IDs."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messageRules",
     "method": "post",
     "toolName": "create-mail-rule",
-    "scopes": [
-      "MailboxSettings.ReadWrite"
-    ],
+    "scopes": ["MailboxSettings.ReadWrite"],
     "llmTip": "Creates a message rule for a mail folder. Use the Inbox folder ID (get it from list-mail-folders) for inbox rules. Body: { displayName: 'Rule name', sequence: 1, isEnabled: true, conditions: { fromAddresses: [{ emailAddress: { address: 'user@example.com' } }] }, actions: { moveToFolder: 'folder-id' } }. Actions: moveToFolder, copyToFolder, forwardTo, forwardAsAttachmentTo, delete, markAsRead, markImportance, stopProcessingRules."
   },
   {
     "pathPattern": "/me/outlook/masterCategories",
     "method": "post",
     "toolName": "create-outlook-category",
-    "scopes": [
-      "MailboxSettings.ReadWrite"
-    ],
+    "scopes": ["MailboxSettings.ReadWrite"],
     "llmTip": "Creates a new Outlook category. Body: { displayName (unique), color (one of: none, preset0 \u2026 preset24 \u2014 maps to red, orange, yellow, green, teal, olive, blue, purple, cranberry, steel, dark-steel, gray, dark-gray, black, dark-red, dark-orange, dark-yellow, dark-green, dark-teal, dark-olive, dark-blue, dark-purple, dark-cranberry) }. Category names are case-sensitive when applied to messages/events."
   },
   {
     "pathPattern": "/me/contacts",
     "method": "post",
     "toolName": "create-outlook-contact",
-    "scopes": [
-      "Contacts.ReadWrite"
-    ]
+    "scopes": ["Contacts.ReadWrite"]
   },
   {
     "pathPattern": "/me/messages/{message-id}/createReplyAll",
     "method": "post",
     "toolName": "create-reply-all-draft",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
   },
   {
     "pathPattern": "/me/messages/{message-id}/createReply",
     "method": "post",
     "toolName": "create-reply-draft",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events",
     "method": "post",
     "toolName": "create-specific-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
   },
   {
     "pathPattern": "/me/events/{event-id}/decline",
     "method": "post",
     "toolName": "decline-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Declines a meeting invitation. Optional body: { sendResponse: true, comment: 'Cannot attend, conflict.' }. The event remains in the calendar as declined unless the user deletes it."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}",
     "method": "delete",
     "toolName": "delete-calendar",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Deletes a calendar and all its events. The default calendar cannot be deleted. This action cannot be undone."
   },
   {
     "pathPattern": "/me/events/{event-id}",
     "method": "delete",
     "toolName": "delete-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Deleting a seriesMaster deletes ALL occurrences of the recurring event. To cancel a single occurrence, delete that specific instance ID from list-calendar-event-instances."
   },
   {
     "pathPattern": "/me/inferenceClassification/overrides/{inferenceClassificationOverride-id}",
     "method": "delete",
     "toolName": "delete-focused-inbox-override",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Deletes a Focused Inbox override. Future messages from that sender revert to the Outlook ML classifier's default behavior. Use list-focused-inbox-overrides to find the ID first."
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments/{attachment-id}",
     "method": "delete",
     "toolName": "delete-mail-attachment",
-    "scopes": [
-      "Mail.ReadWrite"
-    ]
+    "scopes": ["Mail.ReadWrite"]
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}",
     "method": "delete",
     "toolName": "delete-mail-folder",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Deletes a mail folder and all its contents. This action is irreversible. Use list-mail-folders to find the folder ID."
   },
   {
     "pathPattern": "/me/messages/{message-id}",
     "method": "delete",
     "toolName": "delete-mail-message",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Soft delete \u2014 moves to Deleted Items. To permanently delete, delete again from Deleted Items."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messageRules/{messageRule-id}",
     "method": "delete",
     "toolName": "delete-mail-rule",
-    "scopes": [
-      "MailboxSettings.ReadWrite"
-    ],
+    "scopes": ["MailboxSettings.ReadWrite"],
     "llmTip": "Deletes a message rule permanently. Use the Inbox folder ID (get it from list-mail-folders) for inbox rules."
   },
   {
     "pathPattern": "/me/contacts/{contact-id}",
     "method": "delete",
     "toolName": "delete-outlook-contact",
-    "scopes": [
-      "Contacts.ReadWrite"
-    ]
+    "scopes": ["Contacts.ReadWrite"]
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events/{event-id}",
     "method": "delete",
     "toolName": "delete-specific-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Deleting a seriesMaster deletes ALL occurrences. To cancel a single occurrence, use the specific instance ID."
   },
   {
     "pathPattern": "/me/events/{event-id}/dismissReminder",
     "method": "post",
     "toolName": "dismiss-calendar-event-reminder",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Dismisses a triggered event reminder so it won't re-fire. No request body required. Pair with list-calendar-events or get-schedule to find active reminders."
   },
   {
     "pathPattern": "/me/events/{event-id}/forward",
     "method": "post",
     "toolName": "forward-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Forwards a meeting invitation to additional recipients. Body: { ToRecipients: [{ emailAddress: { address, name } }], Comment (optional) }. If the forwarder is an attendee (not organizer), the organizer is also notified and the new recipient is added to the organizer's attendee list."
   },
   {
     "pathPattern": "/me/messages/{message-id}/forward",
     "method": "post",
     "toolName": "forward-mail-message",
-    "scopes": [
-      "Mail.Send"
-    ],
+    "scopes": ["Mail.Send"],
     "llmTip": "Forward an email preserving full HTML formatting and attachments. The 'comment' field adds text above the forwarded content. toRecipients is required. Do NOT reconstruct the email manually - this endpoint handles everything server-side."
   },
   {
     "pathPattern": "/me/events/{event-id}",
     "method": "get",
     "toolName": "get-calendar-event",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true
   },
@@ -288,9 +224,7 @@
     "pathPattern": "/me/calendarView",
     "method": "get",
     "toolName": "get-calendar-view",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true,
     "llmTip": "Returns expanded recurring event instances (not just seriesMaster) within a date range for the default calendar. Requires startDateTime and endDateTime query parameters in ISO 8601 format (e.g., 2024-01-01T00:00:00Z). Use get-specific-calendar-view if you need a non-default calendar. To find Teams meetings, use $filter=isOnlineMeeting eq true. To search by subject, use $filter=contains(subject,'keyword'). Teams meetings include a joinWebUrl property needed for transcript access via list-online-meetings."
@@ -299,58 +233,44 @@
     "pathPattern": "/me",
     "method": "get",
     "toolName": "get-current-user",
-    "scopes": [
-      "User.Read"
-    ]
+    "scopes": ["User.Read"]
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments/{attachment-id}",
     "method": "get",
     "toolName": "get-mail-attachment",
-    "scopes": [
-      "Mail.Read"
-    ]
+    "scopes": ["Mail.Read"]
   },
   {
     "pathPattern": "/me/messages/{message-id}",
     "method": "get",
     "toolName": "get-mail-message",
-    "scopes": [
-      "Mail.Read"
-    ]
+    "scopes": ["Mail.Read"]
   },
   {
     "pathPattern": "/me/mailboxSettings",
     "method": "get",
     "toolName": "get-mailbox-settings",
-    "scopes": [
-      "MailboxSettings.Read"
-    ],
+    "scopes": ["MailboxSettings.Read"],
     "llmTip": "Gets the current user's mailbox settings including automaticRepliesSetting (out-of-office status, message, scheduledStartDateTime/EndDateTime, externalAudience), language, timeZone, dateFormat, timeFormat, delegateMeetingMessageDeliveryOptions, and userPurpose."
   },
   {
     "pathPattern": "/me/contacts/{contact-id}",
     "method": "get",
     "toolName": "get-outlook-contact",
-    "scopes": [
-      "Contacts.Read"
-    ]
+    "scopes": ["Contacts.Read"]
   },
   {
     "pathPattern": "/users/{user-id}/messages/{message-id}",
     "method": "get",
     "toolName": "get-shared-mailbox-message",
-    "scopes": [
-      "Mail.Read.Shared"
-    ]
+    "scopes": ["Mail.Read.Shared"]
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events/{event-id}",
     "method": "get",
     "toolName": "get-specific-calendar-event",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true
   },
@@ -358,9 +278,7 @@
     "pathPattern": "/me/calendars/{calendar-id}/calendarView",
     "method": "get",
     "toolName": "get-specific-calendar-view",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true,
     "llmTip": "Returns expanded recurring event instances (not just seriesMaster) within a date range for a specific calendar. Requires startDateTime and endDateTime query parameters in ISO 8601 format (e.g., 2024-01-01T00:00:00Z). Each instance includes seriesMasterId and type (occurrence/exception) fields for recurring event linkage. Use fetchAllPages=true to retrieve all results when there are many events. To find Teams meetings, use $filter=isOnlineMeeting eq true. Teams meetings include a joinWebUrl property needed for transcript access via list-online-meetings."
@@ -369,9 +287,7 @@
     "pathPattern": "/me/calendars/{calendar-id}/events/{event-id}/instances",
     "method": "get",
     "toolName": "list-calendar-event-instances",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true,
     "llmTip": "Expand a recurring event into individual instances within a date range. Requires startDateTime and endDateTime query parameters in ISO 8601 format (e.g., 2024-01-01T00:00:00Z). Use this to see all occurrences of a recurring event."
@@ -380,9 +296,7 @@
     "pathPattern": "/me/events",
     "method": "get",
     "toolName": "list-calendar-events",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true,
     "llmTip": "WARNING: Does NOT expand recurring events \u2014 only returns seriesMaster. Use get-calendar-view instead to see individual occurrences within a date range."
@@ -391,113 +305,87 @@
     "pathPattern": "/me/events/delta()",
     "method": "get",
     "toolName": "list-calendar-events-delta",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "llmTip": "Incremental sync of events across the default calendar. First call returns all events plus @odata.deltaLink. Subsequent calls with that link return only additions/updates/removals. Use $select to limit fields. Deltas expire after ~30 days \u2014 start over if the server returns 410 Gone. For a time-bounded view with delta semantics, use list-calendar-view-delta instead."
   },
   {
     "pathPattern": "/me/calendarView/delta()",
     "method": "get",
     "toolName": "list-calendar-view-delta",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "llmTip": "Incremental sync of events within a time window. Required query params on first call: startDateTime, endDateTime (ISO 8601). Returns events in the window plus @odata.deltaLink; subsequent calls with that link return only changes. Expands recurring events to individual occurrences (unlike list-calendar-events-delta which returns the series master). Use this for calendar UIs showing a week/month view."
   },
   {
     "pathPattern": "/me/calendars",
     "method": "get",
     "toolName": "list-calendars",
-    "scopes": [
-      "Calendars.Read"
-    ]
+    "scopes": ["Calendars.Read"]
   },
   {
     "pathPattern": "/me/inferenceClassification/overrides",
     "method": "get",
     "toolName": "list-focused-inbox-overrides",
-    "scopes": [
-      "Mail.Read"
-    ],
+    "scopes": ["Mail.Read"],
     "llmTip": "Lists Focused Inbox classification overrides \u2014 explicit rules that force messages from a given sender (by SMTP address) into either the Focused or Other tab, regardless of what the Outlook ML classifier would predict. Each override has id, classifyAs ('focused' or 'other'), and senderEmailAddress {name, address}. Returns an empty collection if the user has never set an override."
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments",
     "method": "get",
     "toolName": "list-mail-attachments",
-    "scopes": [
-      "Mail.Read"
-    ]
+    "scopes": ["Mail.Read"]
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/childFolders",
     "method": "get",
     "toolName": "list-mail-child-folders",
-    "scopes": [
-      "Mail.Read"
-    ]
+    "scopes": ["Mail.Read"]
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messages",
     "method": "get",
     "toolName": "list-mail-folder-messages",
-    "scopes": [
-      "Mail.Read"
-    ],
+    "scopes": ["Mail.Read"],
     "llmTip": "CRITICAL: When searching emails, the $search parameter value MUST be wrapped in double quotes. Format: $search=\"your search query here\". Use KQL (Keyword Query Language) syntax to search specific properties: 'from:', 'subject:', 'body:', 'to:', 'cc:', 'bcc:', 'attachment:', 'hasAttachments:', 'importance:', 'received:', 'sent:'. Examples: $search=\"from:john@example.com\" | $search=\"subject:meeting AND hasAttachments:true\" | $search=\"body:urgent AND received>=2024-01-01\" | $search=\"from:alice AND importance:high\". Remember: ALWAYS wrap the entire search expression in double quotes! Reference: https://learn.microsoft.com/en-us/graph/search-query-parameter IMPORTANT: Always use $select to limit returned fields and reduce response size. Recommended default: $select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments. Use bodyPreview instead of body for listings. To read the full email body, use get-mail-message with the specific message id."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messages/delta()",
     "method": "get",
     "toolName": "list-mail-folder-messages-delta",
-    "scopes": [
-      "Mail.Read"
-    ],
+    "scopes": ["Mail.Read"],
     "llmTip": "Incremental sync of messages within a mail folder. Graph only supports delta scoped to a folder \u2014 use mailFolder-id = 'inbox' for the well-known inbox, or another folder id from list-mail-folders. First call returns all messages plus @odata.deltaLink; subsequent calls with that link return only changes (created/updated/deleted). @odata.nextLink paginates within a single delta window. Deltas expire after ~30 days of inactivity \u2014 start over if the server returns 410. Prefer this over full re-list for polling."
   },
   {
     "pathPattern": "/me/mailFolders",
     "method": "get",
     "toolName": "list-mail-folders",
-    "scopes": [
-      "Mail.Read"
-    ]
+    "scopes": ["Mail.Read"]
   },
   {
     "pathPattern": "/me/messages",
     "method": "get",
     "toolName": "list-mail-messages",
-    "scopes": [
-      "Mail.Read"
-    ],
+    "scopes": ["Mail.Read"],
     "llmTip": "CRITICAL: When searching emails, the $search parameter value MUST be wrapped in double quotes. Format: $search=\"your search query here\". Use KQL (Keyword Query Language) syntax to search specific properties: 'from:', 'subject:', 'body:', 'to:', 'cc:', 'bcc:', 'attachment:', 'hasAttachments:', 'importance:', 'received:', 'sent:'. Examples: $search=\"from:john@example.com\" | $search=\"subject:meeting AND hasAttachments:true\" | $search=\"body:urgent AND received>=2024-01-01\" | $search=\"from:john AND importance:high\". Remember: ALWAYS wrap the entire search expression in double quotes! Reference: https://learn.microsoft.com/en-us/graph/search-query-parameter IMPORTANT: Always use $select to limit returned fields and reduce response size. Recommended default: $select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments. Use bodyPreview instead of body for listings. To read the full email body, use get-mail-message with the specific message id."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messageRules",
     "method": "get",
     "toolName": "list-mail-rules",
-    "scopes": [
-      "MailboxSettings.Read"
-    ],
+    "scopes": ["MailboxSettings.Read"],
     "llmTip": "Lists all message rules for a mail folder. Use the Inbox folder ID (get it from list-mail-folders) for inbox rules. Each rule has displayName, sequence, isEnabled, conditions (fromAddresses, subjectContains, etc.), actions (moveToFolder, forwardTo, delete, etc.), and exceptions."
   },
   {
     "pathPattern": "/me/outlook/masterCategories",
     "method": "get",
     "toolName": "list-outlook-categories",
-    "scopes": [
-      "MailboxSettings.Read"
-    ],
+    "scopes": ["MailboxSettings.Read"],
     "llmTip": "Lists the user's Outlook categories (colored labels) used to tag messages, events, contacts, and tasks. Each category has displayName and color (preset0 through preset24, or 'none'). Use this to show available tags before applying via update-mail-message or update-calendar-event with body { categories: ['Category Name'] }."
   },
   {
     "pathPattern": "/me/contacts",
     "method": "get",
     "toolName": "list-outlook-contacts",
-    "scopes": [
-      "Contacts.Read"
-    ],
+    "scopes": ["Contacts.Read"],
     "llmTip": "$filter only supports startswith() \u2014 contains() and eq on emailAddresses do not work. Use $search as alternative for broader matching."
   },
   {
@@ -505,26 +393,20 @@
     "method": "get",
     "toolName": "list-shared-mailbox-folder-messages",
     "llmTip": "CRITICAL: When searching emails, the $search parameter value MUST be wrapped in double quotes. Format: $search=\"your search query here\". Use KQL (Keyword Query Language) syntax to search specific properties: 'from:', 'subject:', 'body:', 'to:', 'cc:', 'bcc:', 'attachment:', 'hasAttachments:', 'importance:', 'received:', 'sent:'. Examples: $search=\"from:john@example.com\" | $search=\"subject:meeting AND hasAttachments:true\" | $search=\"body:urgent AND received>=2024-01-01\" | $search=\"from:alice AND importance:high\". Remember: ALWAYS wrap the entire search expression in double quotes! Reference: https://learn.microsoft.com/en-us/graph/search-query-parameter IMPORTANT: Always use $select to limit returned fields and reduce response size. Recommended default: $select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments. Use bodyPreview instead of body for listings. To read the full email body, use get-shared-mailbox-message with the specific message id.",
-    "scopes": [
-      "Mail.Read.Shared"
-    ]
+    "scopes": ["Mail.Read.Shared"]
   },
   {
     "pathPattern": "/users/{user-id}/messages",
     "method": "get",
     "toolName": "list-shared-mailbox-messages",
     "llmTip": "CRITICAL: When searching emails, the $search parameter value MUST be wrapped in double quotes. Format: $search=\"your search query here\". Use KQL (Keyword Query Language) syntax to search specific properties: 'from:', 'subject:', 'body:', 'to:', 'cc:', 'bcc:', 'attachment:', 'hasAttachments:', 'importance:', 'received:', 'sent:'. Examples: $search=\"from:john@example.com\" | $search=\"subject:meeting AND hasAttachments:true\" | $search=\"body:urgent AND received>=2024-01-01\" | $search=\"from:alice AND importance:high\". Remember: ALWAYS wrap the entire search expression in double quotes! Reference: https://learn.microsoft.com/en-us/graph/search-query-parameter IMPORTANT: Always use $select to limit returned fields and reduce response size. Recommended default: $select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments. Use bodyPreview instead of body for listings. To read the full email body, use get-shared-mailbox-message with the specific message id.",
-    "scopes": [
-      "Mail.Read.Shared"
-    ]
+    "scopes": ["Mail.Read.Shared"]
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events",
     "method": "get",
     "toolName": "list-specific-calendar-events",
-    "scopes": [
-      "Calendars.Read"
-    ],
+    "scopes": ["Calendars.Read"],
     "supportsTimezone": true,
     "supportsExpandExtendedProperties": true,
     "llmTip": "WARNING: Does NOT expand recurring events \u2014 only returns seriesMaster. Use get-specific-calendar-view instead."
@@ -533,143 +415,146 @@
     "pathPattern": "/me/messages/{message-id}/move",
     "method": "post",
     "toolName": "move-mail-message",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "destinationId accepts folder ID or well-known name (inbox, drafts, sentitems, deleteditems, junkemail, archive)."
   },
   {
     "pathPattern": "/me/messages/{message-id}/replyAll",
     "method": "post",
     "toolName": "reply-all-mail-message",
-    "scopes": [
-      "Mail.Send"
-    ],
+    "scopes": ["Mail.Send"],
     "llmTip": "Reply-all preserving full HTML formatting. The 'comment' field is your reply text."
   },
   {
     "pathPattern": "/me/messages/{message-id}/reply",
     "method": "post",
     "toolName": "reply-mail-message",
-    "scopes": [
-      "Mail.Send"
-    ],
+    "scopes": ["Mail.Send"],
     "llmTip": "Reply to an email preserving full HTML formatting. The 'comment' field is your reply text. Do NOT reconstruct the email manually."
   },
   {
     "pathPattern": "/me/messages/{message-id}/send",
     "method": "post",
     "toolName": "send-draft-message",
-    "scopes": [
-      "Mail.Send"
-    ],
+    "scopes": ["Mail.Send"],
     "llmTip": "No request body needed \u2014 just call with the message ID. Draft must exist in Drafts folder."
   },
   {
     "pathPattern": "/me/sendMail",
     "method": "post",
     "toolName": "send-mail",
-    "scopes": [
-      "Mail.Send"
-    ],
+    "scopes": ["Mail.Send"],
     "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
   },
   {
     "pathPattern": "/me/events/{event-id}/snoozeReminder",
     "method": "post",
     "toolName": "snooze-calendar-event-reminder",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Postpones a triggered event reminder. Body: { NewReminderTime: { dateTime (ISO 8601), timeZone (IANA or Windows, e.g. 'Pacific Standard Time') } }. The reminder will re-fire at the new time."
   },
   {
     "pathPattern": "/me/events/{event-id}/tentativelyAccept",
     "method": "post",
     "toolName": "tentatively-accept-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Tentatively accepts a meeting invitation. Optional body: { sendResponse: true, comment: 'I might be able to attend.' }. Use proposedNewTime to suggest an alternative: { proposedNewTime: { start: { dateTime, timeZone }, end: { dateTime, timeZone } } }."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}",
     "method": "patch",
     "toolName": "update-calendar",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "Updates a calendar's properties. Body: { name: 'New Name', color: 'lightBlue' }. Cannot update the default calendar's name."
   },
   {
     "pathPattern": "/me/events/{event-id}",
     "method": "patch",
     "toolName": "update-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients. WARNING: Setting attendees replaces the entire attendee list \u2014 include all attendees, not just new ones."
   },
   {
     "pathPattern": "/me/inferenceClassification/overrides/{inferenceClassificationOverride-id}",
     "method": "patch",
     "toolName": "update-focused-inbox-override",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Updates the classifyAs field of an existing override. Body: { classifyAs: 'focused' } or { classifyAs: 'other' }. Per Graph API, PATCH cannot change senderEmailAddress \u2014 to change the SMTP address, delete and recreate the override. To rename the display name only, POST a new override with the same SMTP address (it will overwrite the name)."
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}",
     "method": "patch",
     "toolName": "update-mail-folder",
-    "scopes": [
-      "Mail.ReadWrite"
-    ],
+    "scopes": ["Mail.ReadWrite"],
     "llmTip": "Renames a mail folder by updating its displayName. Use list-mail-folders to find the folder ID."
   },
   {
     "pathPattern": "/me/messages/{message-id}",
     "method": "patch",
     "toolName": "update-mail-message",
-    "scopes": [
-      "Mail.ReadWrite"
-    ]
+    "scopes": ["Mail.ReadWrite"]
   },
   {
     "pathPattern": "/me/mailFolders/{mailFolder-id}/messageRules/{messageRule-id}",
     "method": "patch",
     "toolName": "update-mail-rule",
-    "scopes": [
-      "MailboxSettings.ReadWrite"
-    ],
+    "scopes": ["MailboxSettings.ReadWrite"],
     "llmTip": "Updates an existing message rule. Use the Inbox folder ID (get it from list-mail-folders) for inbox rules. Send only the properties to change. Common use: { isEnabled: false } to disable a rule, or update conditions/actions."
   },
   {
     "pathPattern": "/me/mailboxSettings",
     "method": "patch",
     "toolName": "update-mailbox-settings",
-    "scopes": [
-      "MailboxSettings.ReadWrite"
-    ],
+    "scopes": ["MailboxSettings.ReadWrite"],
     "llmTip": "Updates mailbox settings. Common use: configure Out-of-Office (automatic replies). Body example: { automaticRepliesSetting: { status: 'scheduled', scheduledStartDateTime: { dateTime: '2026-03-28T17:00:00', timeZone: 'Eastern Standard Time' }, scheduledEndDateTime: { dateTime: '2026-04-01T08:00:00', timeZone: 'Eastern Standard Time' }, internalReplyMessage: 'I am OOO.', externalReplyMessage: 'I am out of office.' } }. Status values: disabled, alwaysEnabled, scheduled."
   },
   {
     "pathPattern": "/me/contacts/{contact-id}",
     "method": "patch",
     "toolName": "update-outlook-contact",
-    "scopes": [
-      "Contacts.ReadWrite"
-    ],
+    "scopes": ["Contacts.ReadWrite"],
     "llmTip": "emailAddresses array is replaced entirely \u2014 include all addresses, not just new ones."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events/{event-id}",
     "method": "patch",
     "toolName": "update-specific-calendar-event",
-    "scopes": [
-      "Calendars.ReadWrite"
-    ],
+    "scopes": ["Calendars.ReadWrite"],
     "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients. WARNING: Setting attendees replaces the entire attendee list \u2014 include all attendees, not just new ones."
+  },
+  {
+    "pathPattern": "/users/{user-id}/sendMail",
+    "method": "post",
+    "toolName": "send-shared-mailbox-mail",
+    "scopes": ["Mail.Send.Shared"],
+    "llmTip": "Send a message from a shared mailbox. The 'user-id' is the shared mailbox email address (e.g. support@enabi.io). Requires Send As (or Send on Behalf Of) permission granted in Exchange Online for the signed-in user on this shared mailbox. CRITICAL: Do not guess recipient email addresses; resolve them via list-outlook-contacts or other directory tools."
+  },
+  {
+    "pathPattern": "/users/{user-id}/messages",
+    "method": "post",
+    "toolName": "create-shared-mailbox-draft",
+    "scopes": ["Mail.ReadWrite.Shared"],
+    "llmTip": "Create a draft message in a shared mailbox. The 'user-id' is the shared mailbox email address. Pair with send-draft-message style flows by editing the draft, then sending via the shared-mailbox send endpoints."
+  },
+  {
+    "pathPattern": "/users/{user-id}/messages/{message-id}/reply",
+    "method": "post",
+    "toolName": "reply-shared-mailbox-mail",
+    "scopes": ["Mail.Send.Shared"],
+    "llmTip": "Reply to a message from a shared mailbox preserving full HTML formatting and conversation thread. The 'user-id' is the shared mailbox email address. The 'comment' field is your reply text. Do NOT reconstruct the email manually. Requires Send As permission on the shared mailbox in Exchange."
+  },
+  {
+    "pathPattern": "/users/{user-id}/messages/{message-id}/replyAll",
+    "method": "post",
+    "toolName": "reply-all-shared-mailbox-mail",
+    "scopes": ["Mail.Send.Shared"],
+    "llmTip": "Reply-all to a message from a shared mailbox preserving full HTML formatting and conversation thread. The 'user-id' is the shared mailbox email address. The 'comment' field is your reply text. Requires Send As permission on the shared mailbox in Exchange."
+  },
+  {
+    "pathPattern": "/users/{user-id}/messages/{message-id}/forward",
+    "method": "post",
+    "toolName": "forward-shared-mailbox-mail",
+    "scopes": ["Mail.Send.Shared"],
+    "llmTip": "Forward a message from a shared mailbox preserving full HTML formatting and attachments. The 'user-id' is the shared mailbox email address. 'toRecipients' is required. The 'comment' field adds text above the forwarded content. Requires Send As permission on the shared mailbox in Exchange."
   }
 ]

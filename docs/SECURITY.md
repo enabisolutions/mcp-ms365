@@ -25,8 +25,8 @@ If the issue is in upstream and not in our fork, also report it to https://githu
 
 ## Responsibilities
 
-| Who | What |
-|-----|------|
-| Each employee | Keep their laptop locked, do not commit secrets, run `--logout` when leaving the machine for an extended period. |
-| Daniel (current owner) | Approve every upstream-sync PR. Rotate the Azure app's client secret if leaked. Maintain the capability baseline. |
+| Who                      | What                                                                                                                                             |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Each employee            | Keep their laptop locked, do not commit secrets, run `--logout` when leaving the machine for an extended period.                                 |
+| Daniel (current owner)   | Approve every upstream-sync PR. Rotate the Azure app's client secret if leaked. Maintain the capability baseline.                                |
 | IT (Azure tenant admins) | Pre-consent the scopes in `docs/SCOPES.md` at the tenant level. Revoke a user's app consent if they leave Enabi or their account is compromised. |

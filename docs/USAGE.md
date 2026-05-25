@@ -17,23 +17,23 @@ Every tool follows the pattern `<verb>-<noun>` and maps directly to a Microsoft 
 
 ### "What is on my calendar?"
 
-| User intent | Tool | Why |
-|------|------|-----|
-| Today's / this week's / a date range | `get-calendar-view` | Date-range based; expands recurrences automatically. |
-| All events without a date filter | `list-calendar-events` | No recurrence expansion; needs manual `$filter`. |
-| One specific event you have the ID for | `get-calendar-event` | Direct fetch. |
-| Just changes since last sync | `list-calendar-events-delta` or `list-calendar-view-delta` | Pass the prior `deltaLink` if you have one. |
+| User intent                            | Tool                                                       | Why                                                  |
+| -------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
+| Today's / this week's / a date range   | `get-calendar-view`                                        | Date-range based; expands recurrences automatically. |
+| All events without a date filter       | `list-calendar-events`                                     | No recurrence expansion; needs manual `$filter`.     |
+| One specific event you have the ID for | `get-calendar-event`                                       | Direct fetch.                                        |
+| Just changes since last sync           | `list-calendar-events-delta` or `list-calendar-view-delta` | Pass the prior `deltaLink` if you have one.          |
 
 For a "what is happening today" question, prefer `get-calendar-view` with `startDateTime` and `endDateTime` covering today. Pass the user's local timezone via the `timezone` parameter (IANA name like `Europe/Stockholm`) so the times come back in their zone.
 
 ### "Find me an email about X"
 
-| User intent | Tool | Why |
-|------|------|-----|
-| Recent unread / by date | `list-mail-messages` with `$filter=isRead eq false` and `$orderby=receivedDateTime desc` | OData filter. |
-| Free-text search | `list-mail-messages` with `$search="X"` | KQL search. Cannot combine with `$filter`. |
-| In a specific folder | `list-mail-folder-messages` | Need the folder ID; get it from `list-mail-folders` first. |
-| One you already know the ID of | `get-mail-message` | Direct. |
+| User intent                    | Tool                                                                                     | Why                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Recent unread / by date        | `list-mail-messages` with `$filter=isRead eq false` and `$orderby=receivedDateTime desc` | OData filter.                                              |
+| Free-text search               | `list-mail-messages` with `$search="X"`                                                  | KQL search. Cannot combine with `$filter`.                 |
+| In a specific folder           | `list-mail-folder-messages`                                                              | Need the folder ID; get it from `list-mail-folders` first. |
+| One you already know the ID of | `get-mail-message`                                                                       | Direct.                                                    |
 
 Always pass `$select` to keep responses small. Useful select sets:
 

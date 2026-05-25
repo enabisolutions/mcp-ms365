@@ -70,6 +70,7 @@ curl -fsSL https://raw.githubusercontent.com/enabisolutions/mcp-ms365/main/scrip
 The installer ships with the Enabi Azure app IDs baked in. If you ever need to override them (e.g. testing against a different tenant), set `MS365_MCP_CLIENT_ID` and `MS365_MCP_TENANT_ID` in your shell before running.
 
 The installer will:
+
 1. Clone to `~/.local/share/enabi-m365-mcp/`
 2. Build it
 3. Open a browser for sign-in (use your `@enabi.io` account)
@@ -170,6 +171,7 @@ The two most common failure modes:
 **The sign-in browser opens but never returns.** The redirect URI is wrong on the Azure app. Confirm `http://localhost` is registered as a public-client redirect URI. See `docs/AZURE_APP_SETUP.md` step 3.
 
 For anything else, grab the tail of:
+
 - `~/.ms-365-mcp-server/logs/mcp-server.log` (operational log)
 - `~/.config/enabi-m365-mcp/audit/audit-*.log` (audit log)
 
