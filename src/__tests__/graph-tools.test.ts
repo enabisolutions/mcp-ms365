@@ -1089,7 +1089,11 @@ describe('graph-tools', () => {
       registerGraphTools(server as any, graphClient as any);
 
       await server.tools.get('create-calendar-event')!.handler({
-        body: { subject: 'Skype call', isOnlineMeeting: true, onlineMeetingProvider: 'skypeForBusiness' },
+        body: {
+          subject: 'Skype call',
+          isOnlineMeeting: true,
+          onlineMeetingProvider: 'skypeForBusiness',
+        },
       });
 
       const sent = parseSentBody(graphClient);
