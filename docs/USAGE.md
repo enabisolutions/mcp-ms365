@@ -66,7 +66,7 @@ Skip the multi-step if you are just sending an acknowledgement and the user alre
 Enabi's MCP cannot read other people's calendars or call `find-meeting-times`. To book a meeting:
 
 1. Ask the user for the proposed time.
-2. `create-calendar-event` with `attendees` set. Set `isOnlineMeeting: true` if they want a Teams link generated.
+2. `create-calendar-event` with `attendees` set. A Microsoft Teams meeting link is added automatically (`isOnlineMeeting: true`, `onlineMeetingProvider: 'teamsForBusiness'`). To create an event without a Teams link, pass `isOnlineMeeting: false` in the body. The default can be disabled globally with the `MS365_MCP_DISABLE_TEAMS_DEFAULT=true` environment variable.
 
 If the user wants you to find a slot across colleagues, say so explicitly: "I cannot see other people's calendars. Tell me the time and I will book it."
 

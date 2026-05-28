@@ -69,6 +69,41 @@ function clampTopQueryParam(queryParams: Record<string, string>): void {
   queryParams['$top'] = String(cap);
 }
 
+/**
+ * Default behavior for create-calendar-event and create-specific-calendar-event:
+ * automatically add a Microsoft Teams meeting link unless the caller explicitly
+ * opts out by setting `isOnlineMeeting: false` in the body, or unless the global
+ * env flag MS365_MCP_DISABLE_TEAMS_DEFAULT=true is set.
+ *
+ * Rationale: in practice nearly every invite needs a Teams link; forgetting to
+ * add one is a recurring mistake. Caller opt-out is preserved.
+ */
+function applyCreateEventDefaults(toolName: string, body: unknown): unknown {
+  if (toolName !== 'create-calendar-event' && toolName !== 'create-specific-calendar-event') {
+    return body;
+  }
+  if (process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT === 'true') {
+    return body;
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return body;
+  }
+  const event = body as Record<string, unknown>;
+  let mutated = false;
+  if (event.isOnlineMeeting === undefined) {
+    event.isOnlineMeeting = true;
+    mutated = true;
+  }
+  if (event.isOnlineMeeting === true && event.onlineMeetingProvider === undefined) {
+    event.onlineMeetingProvider = 'teamsForBusiness';
+    mutated = true;
+  }
+  if (mutated) {
+    logger.info(`Applied Teams meeting defaults to ${toolName} body`);
+  }
+  return event;
+}
+
 type TextContent = {
   type: 'text';
   text: string;
@@ -423,6 +458,8 @@ async function executeGraphTool(
     }
 
     clampTopQueryParam(queryParams);
+
+    body = applyCreateEventDefaults(tool.alias, body);
 
     const preferValues: string[] = [];
 

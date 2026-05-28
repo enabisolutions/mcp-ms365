@@ -1017,6 +1017,186 @@ describe('graph-tools', () => {
   });
 
   // ---- 12. Read-only mode filters utility tools without readOnlyHint ----
+  // ---- Teams meeting defaults on create-calendar-event ----
+  describe('Teams meeting defaults on calendar event creation', () => {
+    const createEventEndpoint = () => ({
+      method: 'post' as const,
+      path: '/me/events',
+      alias: 'create-calendar-event',
+      description: 'POST /me/events',
+      requestFormat: 'json' as const,
+      parameters: [{ name: 'body', type: 'Body' as const, schema: z.any() }],
+      response: z.any(),
+    });
+    const createEventConfig = () => ({
+      pathPattern: '/me/events',
+      method: 'post',
+      toolName: 'create-calendar-event',
+      scopes: ['Calendars.ReadWrite'],
+    });
+
+    function parseSentBody(graphClient: any): Record<string, unknown> {
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      return JSON.parse(options.body as string) as Record<string, unknown>;
+    }
+
+    it('injects isOnlineMeeting=true and onlineMeetingProvider=teamsForBusiness by default', async () => {
+      delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      mockEndpoints.push(createEventEndpoint());
+      mockEndpointsJson = [createEventConfig()];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('create-calendar-event')!.handler({
+        body: { subject: 'Sync', start: { dateTime: '2026-06-01T10:00:00', timeZone: 'UTC' } },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.isOnlineMeeting).toBe(true);
+      expect(sent.onlineMeetingProvider).toBe('teamsForBusiness');
+    });
+
+    it('preserves caller opt-out when isOnlineMeeting is explicitly false', async () => {
+      delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      mockEndpoints.push(createEventEndpoint());
+      mockEndpointsJson = [createEventConfig()];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('create-calendar-event')!.handler({
+        body: { subject: 'In-person lunch', isOnlineMeeting: false },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.isOnlineMeeting).toBe(false);
+      expect(sent.onlineMeetingProvider).toBeUndefined();
+    });
+
+    it('preserves caller-supplied onlineMeetingProvider when isOnlineMeeting=true', async () => {
+      delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      mockEndpoints.push(createEventEndpoint());
+      mockEndpointsJson = [createEventConfig()];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('create-calendar-event')!.handler({
+        body: { subject: 'Skype call', isOnlineMeeting: true, onlineMeetingProvider: 'skypeForBusiness' },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.isOnlineMeeting).toBe(true);
+      expect(sent.onlineMeetingProvider).toBe('skypeForBusiness');
+    });
+
+    it('does not inject defaults when MS365_MCP_DISABLE_TEAMS_DEFAULT=true', async () => {
+      process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT = 'true';
+      try {
+        mockEndpoints.push(createEventEndpoint());
+        mockEndpointsJson = [createEventConfig()];
+
+        const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+        const server = createMockServer();
+        const { registerGraphTools } = await loadModule();
+        registerGraphTools(server as any, graphClient as any);
+
+        await server.tools.get('create-calendar-event')!.handler({
+          body: { subject: 'No Teams' },
+        });
+
+        const sent = parseSentBody(graphClient);
+        expect(sent.isOnlineMeeting).toBeUndefined();
+        expect(sent.onlineMeetingProvider).toBeUndefined();
+      } finally {
+        delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      }
+    });
+
+    it('also applies to create-specific-calendar-event', async () => {
+      delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      mockEndpoints.push({
+        method: 'post' as const,
+        path: '/me/calendars/:calendarId/events',
+        alias: 'create-specific-calendar-event',
+        description: 'POST /me/calendars/{calendar-id}/events',
+        requestFormat: 'json' as const,
+        parameters: [
+          { name: 'calendarId', type: 'Path' as const, schema: z.string() },
+          { name: 'body', type: 'Body' as const, schema: z.any() },
+        ],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/calendars/{calendar-id}/events',
+          method: 'post',
+          toolName: 'create-specific-calendar-event',
+          scopes: ['Calendars.ReadWrite'],
+        },
+      ];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('create-specific-calendar-event')!.handler({
+        calendarId: 'CAL123',
+        body: { subject: 'On a specific calendar' },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.isOnlineMeeting).toBe(true);
+      expect(sent.onlineMeetingProvider).toBe('teamsForBusiness');
+    });
+
+    it('does not inject defaults on update-calendar-event (PATCH)', async () => {
+      delete process.env.MS365_MCP_DISABLE_TEAMS_DEFAULT;
+      mockEndpoints.push({
+        method: 'patch' as const,
+        path: '/me/events/:eventId',
+        alias: 'update-calendar-event',
+        description: 'PATCH /me/events/{event-id}',
+        requestFormat: 'json' as const,
+        parameters: [
+          { name: 'eventId', type: 'Path' as const, schema: z.string() },
+          { name: 'body', type: 'Body' as const, schema: z.any() },
+        ],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/events/{event-id}',
+          method: 'patch',
+          toolName: 'update-calendar-event',
+          scopes: ['Calendars.ReadWrite'],
+        },
+      ];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('update-calendar-event')!.handler({
+        eventId: 'EVT123',
+        body: { subject: 'Renamed' },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.isOnlineMeeting).toBeUndefined();
+      expect(sent.onlineMeetingProvider).toBeUndefined();
+    });
+  });
+
   describe('utility tools in read-only mode', () => {
     it('skips utility tools whose readOnlyHint is not true', async () => {
       mockEndpoints.length = 0;

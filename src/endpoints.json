@@ -39,7 +39,7 @@
     "method": "post",
     "toolName": "create-calendar-event",
     "scopes": ["Calendars.ReadWrite"],
-    "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
+    "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients. DEFAULT: this tool auto-adds a Microsoft Teams meeting link (sets isOnlineMeeting=true and onlineMeetingProvider='teamsForBusiness') when the body does not specify isOnlineMeeting. To create an event without a Teams link, explicitly set isOnlineMeeting: false in the body."
   },
   {
     "pathPattern": "/me/messages",
@@ -121,7 +121,7 @@
     "method": "post",
     "toolName": "create-specific-calendar-event",
     "scopes": ["Calendars.ReadWrite"],
-    "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
+    "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients. DEFAULT: this tool auto-adds a Microsoft Teams meeting link (sets isOnlineMeeting=true and onlineMeetingProvider='teamsForBusiness') when the body does not specify isOnlineMeeting. To create an event without a Teams link, explicitly set isOnlineMeeting: false in the body."
   },
   {
     "pathPattern": "/me/events/{event-id}/decline",
