@@ -23,6 +23,13 @@ describe('buildMcpServerInstructions', () => {
     expect(s).toContain('read-only');
   });
 
+  it('documents the Teams meeting default on calendar event creation', () => {
+    const s = buildMcpServerInstructions({ ...baseCtx, discovery: false });
+    expect(s).toContain('create-calendar-event');
+    expect(s).toContain('teamsForBusiness');
+    expect(s).toContain('isOnlineMeeting: false');
+  });
+
   it('does not suggest account switching when multiAccount is false', () => {
     const s = buildMcpServerInstructions({ ...baseCtx, discovery: false, multiAccount: false });
     expect(s).not.toContain('Multiple accounts');
