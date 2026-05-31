@@ -188,3 +188,9 @@ npm run dev              # run from source against stdio
 ```
 
 Before opening a PR, run `npm run verify`. CI runs the same thing.
+
+### Pre-commit hook
+
+`npm install` automatically installs a Git pre-commit hook (via `simple-git-hooks`) that runs Prettier on staged `*.{ts,mts,js,mjs,json,md}` files via `lint-staged`. The hook catches format-check failures locally before they reach CI. To skip the hook for a single commit, prefix with `SKIP_SIMPLE_GIT_HOOKS=1`.
+
+If the hook ever feels broken or missing, re-run `npx simple-git-hooks` from the repo root to reinstall it.
