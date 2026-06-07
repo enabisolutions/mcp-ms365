@@ -107,14 +107,14 @@
     "method": "post",
     "toolName": "create-reply-all-draft",
     "scopes": ["Mail.ReadWrite"],
-    "llmTip": "For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
+    "llmTip": "Creates a threaded reply-all DRAFT in your personal Drafts folder. DOES NOT SEND — user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on personal mailbox. For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
   },
   {
     "pathPattern": "/me/messages/{message-id}/createReply",
     "method": "post",
     "toolName": "create-reply-draft",
     "scopes": ["Mail.ReadWrite"],
-    "llmTip": "For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
+    "llmTip": "Creates a threaded reply DRAFT in your personal Drafts folder. DOES NOT SEND — user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on personal mailbox. For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events",
@@ -210,7 +210,7 @@
     "method": "post",
     "toolName": "forward-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "Forward an email preserving full HTML formatting and attachments. The 'comment' field adds text above the forwarded content. toRecipients is required. Do NOT reconstruct the email manually - this endpoint handles everything server-side."
+    "llmTip": "SENDS the forward IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-forward-draft instead. Forwards preserving full HTML formatting and attachments. The 'comment' field adds text above the forwarded content. toRecipients is required. Do NOT reconstruct the email manually - this endpoint handles everything server-side."
   },
   {
     "pathPattern": "/me/events/{event-id}",
@@ -423,14 +423,14 @@
     "method": "post",
     "toolName": "reply-all-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "Reply-all preserving full HTML formatting. The 'comment' field is your reply text."
+    "llmTip": "SENDS the reply-all IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-reply-all-draft instead. Reply-all preserving full HTML formatting. The 'comment' field is your reply text."
   },
   {
     "pathPattern": "/me/messages/{message-id}/reply",
     "method": "post",
     "toolName": "reply-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "Reply to an email preserving full HTML formatting. The 'comment' field is your reply text. Do NOT reconstruct the email manually."
+    "llmTip": "SENDS the reply IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-reply-draft instead. Replies preserving full HTML formatting. The 'comment' field is your reply text. Do NOT reconstruct the email manually."
   },
   {
     "pathPattern": "/me/messages/{message-id}/send",
@@ -534,7 +534,7 @@
     "method": "post",
     "toolName": "create-shared-mailbox-draft",
     "scopes": ["Mail.ReadWrite.Shared"],
-    "llmTip": "Create a draft message in a shared mailbox. The 'user-id' is the shared mailbox email address. Pair with send-draft-message style flows by editing the draft, then sending via the shared-mailbox send endpoints."
+    "llmTip": "Creates a NEW draft message in a shared mailbox — NOT a threaded reply (no In-Reply-To/References headers, won't appear in the source thread). Use only for new outgoing messages from a shared mailbox. There is no draft-reply variant for shared mailboxes today; for review-before-send on a shared-mailbox thread, propose the text in chat and have the human draft it in Outlook directly. The 'user-id' is the shared mailbox email address. Pair with send-draft-message style flows by editing the draft, then sending via the shared-mailbox send endpoints."
   },
   {
     "pathPattern": "/users/{user-id}/messages/{message-id}/reply",
