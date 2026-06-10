@@ -72,7 +72,7 @@ If the user wants you to find a slot across colleagues, say so explicitly: "I ca
 
 ### "Read mail in our shared inbox"
 
-We expose three read-only tools for shared mailboxes:
+Shared-mailbox read tools:
 
 - `list-shared-mailbox-messages` — all messages in a shared mailbox.
 - `list-shared-mailbox-folder-messages` — within a specific folder.
@@ -80,7 +80,25 @@ We expose three read-only tools for shared mailboxes:
 
 The `userId` parameter is the shared mailbox's email address (e.g. `support@enabi.io`).
 
-You cannot send from a shared mailbox through this MCP. If the user asks, tell them to send from Outlook directly.
+### "Reply from a shared mailbox"
+
+Shared-mailbox send + draft tools exist, but the **threaded-draft variant does not**. This is an intentional asymmetry vs. personal mailboxes.
+
+| Pattern                                                       | Personal mailbox                                                       | Shared mailbox                                                                              |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Threaded reply draft (preserves In-Reply-To, lands in Drafts) | `create-reply-draft`, `create-reply-all-draft`, `create-forward-draft` | **Not available**                                                                           |
+| Send threaded reply immediately                               | `reply-mail-message`, `reply-all-mail-message`, `forward-mail-message` | `reply-shared-mailbox-mail`, `reply-all-shared-mailbox-mail`, `forward-shared-mailbox-mail` |
+| New draft without thread context                              | `create-draft-email`                                                   | `create-shared-mailbox-draft` (no thread headers — not threaded in the reader's inbox)      |
+
+**Decision rule** when an agent needs the review-then-send pattern:
+
+- Email landed in a **personal mailbox** → `create-reply-draft` → show draft to user → `send-draft-message`. Threaded.
+- Email landed in a **shared mailbox** and the user needs to review before sending → there is no threaded-draft path. Options:
+  1. Propose the reply text to the user out-of-band (e.g. Slack), have them paste-and-send from Outlook UI. Stays threaded.
+  2. Use `create-shared-mailbox-draft` and tell the user "ej i tråden — klistra in i Outlook" so they know it will not appear inside the original thread.
+  3. After user approval, use `reply-shared-mailbox-mail` to send immediately. Threaded, but no review-in-Outlook step.
+
+If shared-mailbox threaded drafts become a recurring need, the right fix is a new MCP tool wrapping `POST /users/{shared}/messages/{id}/createReply` — do not build preemptively.
 
 ### "Look up a contact"
 
