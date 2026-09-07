@@ -45,6 +45,7 @@
     "pathPattern": "/me/messages",
     "method": "post",
     "toolName": "create-draft-email",
+    "llmTip": "Creates a NEW draft message in your personal Drafts folder. DOES NOT SEND. Not a threaded reply. This composes a NEW message. If the subject starts with RE: or SV: the response carries a threading warning, because a new message gets no In-Reply-To or References headers and will not appear in the original thread. To reply, use create-reply-draft or reply-mail-message with the source message's id. Signatures are added by the Outlook client only, never via Graph.",
     "scopes": ["Mail.ReadWrite"]
   },
   {
@@ -59,7 +60,7 @@
     "method": "post",
     "toolName": "create-forward-draft",
     "scopes": ["Mail.ReadWrite"],
-    "llmTip": "Create a forward draft (does not send). Useful when user wants to review before sending."
+    "llmTip": "Creates a forward DRAFT in your personal Drafts folder. DOES NOT SEND, useful when the user wants to review before sending. Put your covering text in 'comment'. It is placed above the forwarded content and preserves the original message and its attachments. 'toRecipients' can be set here or added later by editing the draft. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT use Message.body: it replaces the whole draft body and discards the forwarded content. Signatures are added by the Outlook client only, never via Graph."
   },
   {
     "pathPattern": "/me/messages/{message-id}/attachments/createUploadSession",
@@ -107,14 +108,14 @@
     "method": "post",
     "toolName": "create-reply-all-draft",
     "scopes": ["Mail.ReadWrite"],
-    "llmTip": "Creates a threaded reply-all DRAFT in your personal Drafts folder. DOES NOT SEND — user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on personal mailbox. For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
+    "llmTip": "Creates a threaded reply-all DRAFT in your personal Drafts folder. DOES NOT SEND, the user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on the personal mailbox. Put your reply text in 'comment'. That is the normal path: it keeps the quoted history and thread headers intact. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT use Message.body unless you intend to discard the quoted history: supplying it replaces the whole draft body. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, never via Graph."
   },
   {
     "pathPattern": "/me/messages/{message-id}/createReply",
     "method": "post",
     "toolName": "create-reply-draft",
     "scopes": ["Mail.ReadWrite"],
-    "llmTip": "Creates a threaded reply DRAFT in your personal Drafts folder. DOES NOT SEND — user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on personal mailbox. For HTML replies pass Message.body.contentType: 'html' with Message.body.content as HTML. Note: supplying Message.body replaces the whole draft body, so the original quoted history is not included. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, not via Graph."
+    "llmTip": "Creates a threaded reply DRAFT in your personal Drafts folder. DOES NOT SEND, the user can review/edit in Outlook before sending (or send via send-draft-message). Use this for any review-before-send workflow on the personal mailbox. Put your reply text in 'comment'. That is the normal path: it keeps the quoted history and thread headers intact. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT use Message.body unless you intend to discard the quoted history: supplying it replaces the whole draft body. Specifying both 'comment' and Message.body returns 400. Signatures are added by the Outlook client only, never via Graph."
   },
   {
     "pathPattern": "/me/calendars/{calendar-id}/events",
@@ -210,7 +211,7 @@
     "method": "post",
     "toolName": "forward-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "SENDS the forward IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-forward-draft instead. Forwards preserving full HTML formatting and attachments. The 'comment' field adds text above the forwarded content. toRecipients is required. Do NOT reconstruct the email manually - this endpoint handles everything server-side."
+    "llmTip": "SENDS the forward IMMEDIATELY. No draft is created and there is no review step. For a draft-first workflow use create-forward-draft instead. 'toRecipients' is required. 'comment' adds text above the forwarded content and the endpoint preserves the original formatting and attachments server-side. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT reconstruct the email manually."
   },
   {
     "pathPattern": "/me/events/{event-id}",
@@ -423,14 +424,14 @@
     "method": "post",
     "toolName": "reply-all-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "SENDS the reply-all IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-reply-all-draft instead. Reply-all preserving full HTML formatting. The 'comment' field is your reply text."
+    "llmTip": "SENDS the reply-all IMMEDIATELY. No draft is created and there is no review step. For a draft-first workflow use create-reply-all-draft instead. Put your reply text in 'comment', which keeps the quoted history and thread headers intact. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT reconstruct the email manually."
   },
   {
     "pathPattern": "/me/messages/{message-id}/reply",
     "method": "post",
     "toolName": "reply-mail-message",
     "scopes": ["Mail.Send"],
-    "llmTip": "SENDS the reply IMMEDIATELY — no draft created, no review step. For a draft-first workflow use create-reply-draft instead. Replies preserving full HTML formatting. The 'comment' field is your reply text. Do NOT reconstruct the email manually."
+    "llmTip": "SENDS the reply IMMEDIATELY. No draft is created and there is no review step. For a draft-first workflow use create-reply-draft instead. Put your reply text in 'comment', which keeps the quoted history and thread headers intact. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT reconstruct the email manually."
   },
   {
     "pathPattern": "/me/messages/{message-id}/send",
@@ -444,7 +445,7 @@
     "method": "post",
     "toolName": "send-mail",
     "scopes": ["Mail.Send"],
-    "llmTip": "CRITICAL: Do not try to guess the email address of the recipients. Use the list-users tool to find the email address of the recipients."
+    "llmTip": "SENDS a new mail IMMEDIATELY. CRITICAL: do not guess recipient email addresses, resolve them with list-users or another directory tool. This composes a NEW message. If the subject starts with RE: or SV: the call is refused, because a new message gets no In-Reply-To or References headers and will not appear in the original thread. To reply, use create-reply-draft or reply-mail-message with the source message's id."
   },
   {
     "pathPattern": "/me/events/{event-id}/snoozeReminder",
@@ -527,34 +528,34 @@
     "method": "post",
     "toolName": "send-shared-mailbox-mail",
     "scopes": ["Mail.Send.Shared"],
-    "llmTip": "Send a message from a shared mailbox. The 'user-id' is the shared mailbox email address (e.g. support@enabi.io). Requires Send As (or Send on Behalf Of) permission granted in Exchange Online for the signed-in user on this shared mailbox. CRITICAL: Do not guess recipient email addresses; resolve them via list-outlook-contacts or other directory tools."
+    "llmTip": "Send a message from a shared mailbox. The 'user-id' is the shared mailbox email address (e.g. support@enabi.io). Requires Send As (or Send on Behalf Of) permission granted in Exchange Online for the signed-in user on this shared mailbox. CRITICAL: Do not guess recipient email addresses; resolve them via list-outlook-contacts or other directory tools. This composes a NEW message. If the subject starts with RE: or SV: the call is refused, because a new message gets no In-Reply-To or References headers and will not appear in the original thread. To reply, use reply-shared-mailbox-mail or reply-all-shared-mailbox-mail with the source message's id."
   },
   {
     "pathPattern": "/users/{user-id}/messages",
     "method": "post",
     "toolName": "create-shared-mailbox-draft",
     "scopes": ["Mail.ReadWrite.Shared"],
-    "llmTip": "Creates a NEW draft message in a shared mailbox — NOT a threaded reply (no In-Reply-To/References headers, won't appear in the source thread). Use only for new outgoing messages from a shared mailbox. There is no draft-reply variant for shared mailboxes today; for review-before-send on a shared-mailbox thread, propose the text in chat and have the human draft it in Outlook directly. The 'user-id' is the shared mailbox email address. Pair with send-draft-message style flows by editing the draft, then sending via the shared-mailbox send endpoints."
+    "llmTip": "Creates a NEW draft message in a shared mailbox \u2014 NOT a threaded reply (no In-Reply-To/References headers, won't appear in the source thread). Use only for new outgoing messages from a shared mailbox. There is no draft-reply variant for shared mailboxes today; for review-before-send on a shared-mailbox thread, propose the text in chat and have the human draft it in Outlook directly. The 'user-id' is the shared mailbox email address. Pair with send-draft-message style flows by editing the draft, then sending via the shared-mailbox send endpoints. This composes a NEW message. If the subject starts with RE: or SV: the response carries a threading warning, because a new message gets no In-Reply-To or References headers and will not appear in the original thread. To reply, use reply-shared-mailbox-mail or reply-all-shared-mailbox-mail with the source message's id."
   },
   {
     "pathPattern": "/users/{user-id}/messages/{message-id}/reply",
     "method": "post",
     "toolName": "reply-shared-mailbox-mail",
     "scopes": ["Mail.Send.Shared"],
-    "llmTip": "Reply to a message from a shared mailbox preserving full HTML formatting and conversation thread. The 'user-id' is the shared mailbox email address. The 'comment' field is your reply text. Do NOT reconstruct the email manually. Requires Send As permission on the shared mailbox in Exchange."
+    "llmTip": "SENDS a reply IMMEDIATELY from a shared mailbox, preserving the full HTML formatting and the conversation thread. 'user-id' is the shared mailbox email address. Put your reply text in 'comment'. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT reconstruct the email manually. Requires Send As permission on the shared mailbox in Exchange."
   },
   {
     "pathPattern": "/users/{user-id}/messages/{message-id}/replyAll",
     "method": "post",
     "toolName": "reply-all-shared-mailbox-mail",
     "scopes": ["Mail.Send.Shared"],
-    "llmTip": "Reply-all to a message from a shared mailbox preserving full HTML formatting and conversation thread. The 'user-id' is the shared mailbox email address. The 'comment' field is your reply text. Requires Send As permission on the shared mailbox in Exchange."
+    "llmTip": "SENDS a reply-all IMMEDIATELY from a shared mailbox, preserving the full HTML formatting and the conversation thread. 'user-id' is the shared mailbox email address. Put your reply text in 'comment'. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Do NOT reconstruct the email manually. Requires Send As permission on the shared mailbox in Exchange."
   },
   {
     "pathPattern": "/users/{user-id}/messages/{message-id}/forward",
     "method": "post",
     "toolName": "forward-shared-mailbox-mail",
     "scopes": ["Mail.Send.Shared"],
-    "llmTip": "Forward a message from a shared mailbox preserving full HTML formatting and attachments. The 'user-id' is the shared mailbox email address. 'toRecipients' is required. The 'comment' field adds text above the forwarded content. Requires Send As permission on the shared mailbox in Exchange."
+    "llmTip": "SENDS a forward IMMEDIATELY from a shared mailbox, preserving the full HTML formatting and attachments. 'user-id' is the shared mailbox email address. 'toRecipients' is required. 'comment' adds text above the forwarded content. Graph inserts 'comment' verbatim into an HTML document, so HTML is the expected content: <p>, <br /> and <a href> render, nothing is escaped. Plain text containing newlines is converted to paragraphs server-side by this MCP, so short plain replies are safe; pass HTML yourself for anything beyond paragraphs and line breaks. Requires Send As permission on the shared mailbox in Exchange."
   }
 ]

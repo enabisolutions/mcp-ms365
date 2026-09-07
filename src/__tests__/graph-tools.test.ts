@@ -1201,6 +1201,299 @@ describe('graph-tools', () => {
     });
   });
 
+  // ---- comment normalization on reply/forward endpoints ----
+  describe('comment HTML normalization on reply and forward endpoints', () => {
+    const replyEndpoint = (alias = 'create-reply-draft') => ({
+      method: 'post' as const,
+      path: '/me/messages/:messageId/createReply',
+      alias,
+      description: 'POST /me/messages/{message-id}/createReply',
+      requestFormat: 'json' as const,
+      parameters: [
+        { name: 'messageId', type: 'Path' as const, schema: z.string() },
+        { name: 'body', type: 'Body' as const, schema: z.any() },
+      ],
+      response: z.any(),
+    });
+    const replyConfig = (alias = 'create-reply-draft') => ({
+      pathPattern: '/me/messages/{message-id}/createReply',
+      method: 'post',
+      toolName: alias,
+      scopes: ['Mail.ReadWrite'],
+    });
+
+    function parseSentBody(graphClient: any): Record<string, unknown> {
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      return JSON.parse(options.body as string) as Record<string, unknown>;
+    }
+
+    async function callReply(comment: unknown, alias = 'create-reply-draft') {
+      mockEndpoints.push(replyEndpoint(alias));
+      mockEndpointsJson = [replyConfig(alias)];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get(alias)!.handler({
+        messageId: 'MSG123',
+        body: { comment },
+      });
+
+      return parseSentBody(graphClient);
+    }
+
+    it('wraps plain-text paragraphs separated by blank lines in <p> tags', async () => {
+      const sent = await callReply('Hej Zakarias,\n\nHär är licenserna.\n\nMvh\nDaniel');
+      expect(sent.comment).toBe(
+        '<p>Hej Zakarias,</p><p>Här är licenserna.</p><p>Mvh<br />Daniel</p>'
+      );
+    });
+
+    it('converts single newlines inside a paragraph to <br />', async () => {
+      const sent = await callReply('Rad ett\nRad två');
+      expect(sent.comment).toBe('<p>Rad ett<br />Rad två</p>');
+    });
+
+    it('handles CRLF line endings', async () => {
+      const sent = await callReply('Ett\r\n\r\nTvå');
+      expect(sent.comment).toBe('<p>Ett</p><p>Två</p>');
+    });
+
+    it('escapes HTML-significant characters in plain text', async () => {
+      const sent = await callReply('a < b & c > d\n\nklart');
+      expect(sent.comment).toBe('<p>a &lt; b &amp; c &gt; d</p><p>klart</p>');
+    });
+
+    it('leaves a comment that already contains HTML tags untouched', async () => {
+      const html = '<p>Hej</p>\n<p>Då</p>';
+      const sent = await callReply(html);
+      expect(sent.comment).toBe(html);
+    });
+
+    it('leaves a single-line plain comment untouched', async () => {
+      const sent = await callReply('Tack, det stämmer.');
+      expect(sent.comment).toBe('Tack, det stämmer.');
+    });
+
+    it('leaves a non-string comment untouched', async () => {
+      const sent = await callReply(42);
+      expect(sent.comment).toBe(42);
+    });
+
+    it('applies to shared-mailbox reply as well', async () => {
+      const sent = await callReply('Ett\n\nTvå', 'reply-shared-mailbox-mail');
+      expect(sent.comment).toBe('<p>Ett</p><p>Två</p>');
+    });
+
+    it('does not normalize on tools where comment is not inserted into HTML', async () => {
+      mockEndpoints.push({
+        method: 'post' as const,
+        path: '/me/events/:eventId/accept',
+        alias: 'accept-calendar-event',
+        description: 'POST /me/events/{event-id}/accept',
+        requestFormat: 'json' as const,
+        parameters: [
+          { name: 'eventId', type: 'Path' as const, schema: z.string() },
+          { name: 'body', type: 'Body' as const, schema: z.any() },
+        ],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/events/{event-id}/accept',
+          method: 'post',
+          toolName: 'accept-calendar-event',
+          scopes: ['Calendars.ReadWrite'],
+        },
+      ];
+
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('accept-calendar-event')!.handler({
+        eventId: 'EVT123',
+        body: { comment: 'Ett\n\nTvå' },
+      });
+
+      const sent = parseSentBody(graphClient);
+      expect(sent.comment).toBe('Ett\n\nTvå');
+    });
+
+    it('does not normalize when MS365_MCP_DISABLE_COMMENT_HTML=true', async () => {
+      process.env.MS365_MCP_DISABLE_COMMENT_HTML = 'true';
+      try {
+        const sent = await callReply('Ett\n\nTvå');
+        expect(sent.comment).toBe('Ett\n\nTvå');
+      } finally {
+        delete process.env.MS365_MCP_DISABLE_COMMENT_HTML;
+      }
+    });
+  });
+
+  // ---- reply-composed-as-new-message guard ----
+  describe('reply-subject guard on new-message tools', () => {
+    const sendMailEndpoint = () => ({
+      method: 'post' as const,
+      path: '/me/sendMail',
+      alias: 'send-mail',
+      description: 'POST /me/sendMail',
+      requestFormat: 'json' as const,
+      parameters: [{ name: 'body', type: 'Body' as const, schema: z.any() }],
+      response: z.any(),
+    });
+    const sendMailConfig = () => ({
+      pathPattern: '/me/sendMail',
+      method: 'post',
+      toolName: 'send-mail',
+      scopes: ['Mail.Send'],
+    });
+    const draftEndpoint = () => ({
+      method: 'post' as const,
+      path: '/me/messages',
+      alias: 'create-draft-email',
+      description: 'POST /me/messages',
+      requestFormat: 'json' as const,
+      parameters: [{ name: 'body', type: 'Body' as const, schema: z.any() }],
+      response: z.any(),
+    });
+    const draftConfig = () => ({
+      pathPattern: '/me/messages',
+      method: 'post',
+      toolName: 'create-draft-email',
+      scopes: ['Mail.ReadWrite'],
+    });
+
+    async function setup(endpoint: any, config: any) {
+      mockEndpoints.push(endpoint);
+      mockEndpointsJson = [config];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+      return { graphClient, server };
+    }
+
+    it('refuses send-mail when the subject starts with RE: and does not call Graph', async () => {
+      const { graphClient, server } = await setup(sendMailEndpoint(), sendMailConfig());
+
+      const result = await server.tools.get('send-mail')!.handler({
+        body: {
+          message: {
+            subject: 'RE: Licenser inför förnyelsen',
+            toRecipients: [{ emailAddress: { address: 'zg@example.com' } }],
+          },
+        },
+      });
+
+      expect(graphClient.graphRequest).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      const payload = JSON.parse(result.content[0].text as string);
+      expect(payload.error).toContain('create-reply-draft');
+      expect(payload.error).toContain('MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD');
+    });
+
+    it('refuses send-mail for SV: and Sv: prefixes', async () => {
+      for (const subject of ['SV: Offert', 'Sv: Offert']) {
+        mockEndpoints.length = 0;
+        const { graphClient, server } = await setup(sendMailEndpoint(), sendMailConfig());
+        const result = await server.tools.get('send-mail')!.handler({
+          body: { message: { subject } },
+        });
+        expect(graphClient.graphRequest).not.toHaveBeenCalled();
+        expect(result.isError).toBe(true);
+      }
+    });
+
+    it('allows send-mail for an ordinary subject', async () => {
+      const { graphClient, server } = await setup(sendMailEndpoint(), sendMailConfig());
+
+      const result = await server.tools.get('send-mail')!.handler({
+        body: { message: { subject: 'Licenser inför förnyelsen' } },
+      });
+
+      expect(graphClient.graphRequest).toHaveBeenCalled();
+      expect(result.isError).toBeFalsy();
+    });
+
+    it('allows a subject that merely contains RE: later in the line', async () => {
+      const { graphClient, server } = await setup(sendMailEndpoint(), sendMailConfig());
+
+      await server.tools.get('send-mail')!.handler({
+        body: { message: { subject: 'Fråga RE: nya priser' } },
+      });
+
+      expect(graphClient.graphRequest).toHaveBeenCalled();
+    });
+
+    it('warns but proceeds on create-draft-email, since a draft is reversible', async () => {
+      const { graphClient, server } = await setup(draftEndpoint(), draftConfig());
+
+      const result = await server.tools.get('create-draft-email')!.handler({
+        body: { subject: 'RE: Licenser', toRecipients: [] },
+      });
+
+      expect(graphClient.graphRequest).toHaveBeenCalled();
+      expect(result.isError).toBeFalsy();
+      const warning = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('threading'));
+      expect(warning).toBeDefined();
+      expect(warning).toContain('create-reply-draft');
+    });
+
+    it('does not guard when MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD=true', async () => {
+      process.env.MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD = 'true';
+      try {
+        const { graphClient, server } = await setup(sendMailEndpoint(), sendMailConfig());
+        const result = await server.tools.get('send-mail')!.handler({
+          body: { message: { subject: 'RE: Licenser' } },
+        });
+        expect(graphClient.graphRequest).toHaveBeenCalled();
+        expect(result.isError).toBeFalsy();
+      } finally {
+        delete process.env.MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD;
+      }
+    });
+
+    it('does not guard tools that are already threaded replies', async () => {
+      mockEndpoints.push({
+        method: 'post' as const,
+        path: '/me/messages/:messageId/reply',
+        alias: 'reply-mail-message',
+        description: 'POST /me/messages/{message-id}/reply',
+        requestFormat: 'json' as const,
+        parameters: [
+          { name: 'messageId', type: 'Path' as const, schema: z.string() },
+          { name: 'body', type: 'Body' as const, schema: z.any() },
+        ],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/messages/{message-id}/reply',
+          method: 'post',
+          toolName: 'reply-mail-message',
+          scopes: ['Mail.Send'],
+        },
+      ];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('reply-mail-message')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Tack', message: { subject: 'RE: Licenser' } },
+      });
+
+      expect(graphClient.graphRequest).toHaveBeenCalled();
+    });
+  });
+
   describe('utility tools in read-only mode', () => {
     it('skips utility tools whose readOnlyHint is not true', async () => {
       mockEndpoints.length = 0;

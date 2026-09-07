@@ -104,6 +104,146 @@ function applyCreateEventDefaults(toolName: string, body: unknown): unknown {
   return event;
 }
 
+/**
+ * Tools whose `comment` field is inserted verbatim by Graph into an HTML
+ * document (above the <hr> that precedes the quoted thread). On these,
+ * plain-text newlines collapse to whitespace and the whole message renders as
+ * a single paragraph — silently, with a healthy-looking API response.
+ */
+const COMMENT_IS_HTML_TOOLS = new Set([
+  'create-reply-draft',
+  'create-reply-all-draft',
+  'create-forward-draft',
+  'reply-mail-message',
+  'reply-all-mail-message',
+  'forward-mail-message',
+  'reply-shared-mailbox-mail',
+  'reply-all-shared-mailbox-mail',
+  'forward-shared-mailbox-mail',
+]);
+
+// Deliberately strict: "a < b & c > d" is prose, not markup, so no whitespace
+// is allowed between "<" and the tag name.
+const HTML_TAG_PATTERN = /<\/?[a-z][a-z0-9-]*(\s[^<>]*)?\/?>/i;
+
+function escapeHtmlText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Convert a plain-text `comment` into HTML paragraphs before it reaches Graph.
+ *
+ * Only applies when the comment contains newlines and no HTML tags — a comment
+ * that already carries markup is the caller's own HTML and is left alone, and a
+ * single-line comment needs no conversion. Blank lines become paragraph breaks,
+ * single newlines become <br />.
+ *
+ * Rationale: the server is the layer that knows the comment lands inside an
+ * HTML document, so the server guarantees the invariant. Documenting it in the
+ * tool description is not enough — the failure is silent and depends on every
+ * future caller reading carefully. Opt out with MS365_MCP_DISABLE_COMMENT_HTML=true.
+ */
+function normalizeCommentHtml(toolName: string, body: unknown): unknown {
+  if (!COMMENT_IS_HTML_TOOLS.has(toolName)) {
+    return body;
+  }
+  if (process.env.MS365_MCP_DISABLE_COMMENT_HTML === 'true') {
+    return body;
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return body;
+  }
+  const payload = body as Record<string, unknown>;
+  const comment = payload.comment;
+  if (typeof comment !== 'string' || !/\r?\n/.test(comment) || HTML_TAG_PATTERN.test(comment)) {
+    return payload;
+  }
+
+  const paragraphs = comment
+    .split(/(?:\r?\n){2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0)
+    .map((paragraph) => escapeHtmlText(paragraph).replace(/\r?\n/g, '<br />'));
+
+  if (paragraphs.length === 0) {
+    return payload;
+  }
+
+  payload.comment = paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
+  logger.info(`Normalized plain-text comment to HTML paragraphs for ${toolName}`);
+  return payload;
+}
+
+/**
+ * Tools that compose a NEW message. A new message carries no In-Reply-To or
+ * References headers, so it starts its own conversation even when the subject
+ * says "RE:". The recipient sees an orphan mail next to the thread it belongs to.
+ *
+ * 'send' is irreversible once called, so the guard refuses. 'draft' is
+ * reversible, so the guard lets the call through and attaches a warning.
+ */
+const NEW_MESSAGE_TOOLS = new Map<string, { severity: 'send' | 'draft'; shared: boolean }>([
+  ['send-mail', { severity: 'send', shared: false }],
+  ['create-draft-email', { severity: 'draft', shared: false }],
+  ['send-shared-mailbox-mail', { severity: 'send', shared: true }],
+  ['create-shared-mailbox-draft', { severity: 'draft', shared: true }],
+]);
+
+// Swedish and English reply prefixes. Anchored: "Fråga RE: nya priser" is a
+// legitimate new subject, "RE: Fråga" is a lost reply.
+const REPLY_SUBJECT_PATTERN = /^\s*(re|sv|aw|antw|vs)\s*:/i;
+
+function newMessageSubject(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return undefined;
+  }
+  const payload = body as Record<string, unknown>;
+  // sendMail nests the message; the draft endpoints take a bare Message.
+  const nested = payload.message;
+  const container =
+    nested && typeof nested === 'object' && !Array.isArray(nested)
+      ? (nested as Record<string, unknown>)
+      : payload;
+  const subject = container.subject;
+  return typeof subject === 'string' ? subject : undefined;
+}
+
+/**
+ * Returns a warning when a new-message tool is being used to compose what is
+ * plainly a reply, or undefined when there is nothing to flag. Opt out with
+ * MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD=true.
+ */
+function replySubjectWarning(
+  toolName: string,
+  body: unknown
+): { severity: 'send' | 'draft'; message: string } | undefined {
+  const entry = NEW_MESSAGE_TOOLS.get(toolName);
+  if (!entry) {
+    return undefined;
+  }
+  if (process.env.MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD === 'true') {
+    return undefined;
+  }
+  const subject = newMessageSubject(body);
+  if (!subject || !REPLY_SUBJECT_PATTERN.test(subject)) {
+    return undefined;
+  }
+
+  const alternatives = entry.shared
+    ? "reply-shared-mailbox-mail or reply-all-shared-mailbox-mail, called with the source message's id"
+    : "create-reply-draft (review first) or reply-mail-message (sends immediately), called with the source message's id";
+  const verb = entry.severity === 'send' ? 'Refusing to send' : 'Draft created, but';
+
+  return {
+    severity: entry.severity,
+    message:
+      `${verb}: subject ${JSON.stringify(subject)} looks like a reply, but ${toolName} composes a ` +
+      'NEW message. It gets no In-Reply-To or References headers, so it will not appear in the ' +
+      `original conversation and breaks threading for the recipient. Use ${alternatives}. ` +
+      'If this really is a new message, set MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD=true.',
+  };
+}
+
 type TextContent = {
   type: 'text';
   text: string;
@@ -460,6 +600,31 @@ async function executeGraphTool(
     clampTopQueryParam(queryParams);
 
     body = applyCreateEventDefaults(tool.alias, body);
+    body = normalizeCommentHtml(tool.alias, body);
+
+    const threadingWarning = replySubjectWarning(tool.alias, body);
+    if (threadingWarning?.severity === 'send') {
+      logger.warn(`Reply-subject guard blocked ${tool.alias}: ${threadingWarning.message}`);
+      auditLog({
+        event: 'tool.call',
+        request_id: requestId,
+        user_principal_name: upn,
+        tool: tool.alias,
+        http_method: httpMethod,
+        status: 'error',
+        duration_ms: Date.now() - startTime,
+        error_type: 'ReplySubjectGuard',
+        args: sanitizedArgs,
+        account: auditAccount,
+      });
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ error: threadingWarning.message }) }],
+        isError: true,
+      };
+    }
+    if (threadingWarning) {
+      logger.warn(`Reply-subject guard warning on ${tool.alias}: ${threadingWarning.message}`);
+    }
 
     const preferValues: string[] = [];
 
@@ -657,6 +822,13 @@ async function executeGraphTool(
       type: 'text' as const,
       text: item.text,
     }));
+
+    if (threadingWarning) {
+      content.push({
+        type: 'text' as const,
+        text: JSON.stringify({ warning: threadingWarning.message }),
+      });
+    }
 
     auditLog({
       event: 'tool.call',

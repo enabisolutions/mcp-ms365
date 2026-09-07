@@ -24,14 +24,14 @@ This file lists every change Enabi has made on top of `softeria/ms-365-mcp-serve
 
 ## Files Enabi modified
 
-| File                  | What changed                                                                                                                                                                                                                                                                                                                                                                                   | Conflict risk on upstream sync                                                                                                                                                                                       |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/endpoints.json`  | Trimmed from 270 → 75 endpoints. `Mail.Read.Shared` moved from `workScopes` to `scopes` for the 3 shared-mailbox endpoints.                                                                                                                                                                                                                                                                    | **HIGH** — every upstream `npm run generate` run regenerates this file. The upstream-sync PR will likely show a huge diff. **Always discard upstream changes to this file** unless you're deliberately adding tools. |
-| `src/graph-tools.ts`  | Imports `ALLOWED_TOOLS`, refuses to register non-allowlisted tools (in both `registerGraphTools` and `buildToolsRegistry`). Removed `parse-teams-url` registration. Added `applyCreateEventDefaults` to inject Teams meeting defaults on `create-calendar-event` / `create-specific-calendar-event` (opt out via body `isOnlineMeeting: false` or env `MS365_MCP_DISABLE_TEAMS_DEFAULT=true`). | Medium — upstream churn here will conflict with our allowlist enforcement. Re-apply the allowlist gate and the Teams-default helper after merging.                                                                   |
-| `src/auth.ts`         | `buildScopesFromEndpoints` skips non-allowlisted tools, so scopes never include rejected endpoints' permissions.                                                                                                                                                                                                                                                                               | Medium                                                                                                                                                                                                               |
-| `src/cloud-config.ts` | `getDefaultClientId()` throws instead of returning Softeria's default. Forces `MS365_MCP_CLIENT_ID` to be set.                                                                                                                                                                                                                                                                                 | Low                                                                                                                                                                                                                  |
-| `package.json`        | Renamed to `@enabi/m365-mcp-server`, replaced `generate` script with `build:client`, added `audit:capabilities` script.                                                                                                                                                                                                                                                                        | Low                                                                                                                                                                                                                  |
-| `.gitignore`          | Removed `src/generated/client.ts` exclusion (we commit it now).                                                                                                                                                                                                                                                                                                                                | Low                                                                                                                                                                                                                  |
+| File                  | What changed                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Conflict risk on upstream sync                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/endpoints.json`  | Trimmed from 270 → 75 endpoints. `Mail.Read.Shared` moved from `workScopes` to `scopes` for the 3 shared-mailbox endpoints. `llmTip` rewritten for the whole reply/forward family and for the four new-message tools (see "Mail composition invariants" below).                                                                                                                                                                                                                                  | **HIGH** — every upstream `npm run generate` run regenerates this file. The upstream-sync PR will likely show a huge diff. **Always discard upstream changes to this file** unless you're deliberately adding tools. |
+| `src/graph-tools.ts`  | Imports `ALLOWED_TOOLS`, refuses to register non-allowlisted tools (in both `registerGraphTools` and `buildToolsRegistry`). Removed `parse-teams-url` registration. Added `applyCreateEventDefaults` to inject Teams meeting defaults on `create-calendar-event` / `create-specific-calendar-event` (opt out via body `isOnlineMeeting: false` or env `MS365_MCP_DISABLE_TEAMS_DEFAULT=true`). Added `normalizeCommentHtml` and `replySubjectWarning` (see "Mail composition invariants" below). | Medium — upstream churn here will conflict with our allowlist enforcement. Re-apply the allowlist gate, the Teams-default helper, and the two mail-composition helpers after merging.                                |
+| `src/auth.ts`         | `buildScopesFromEndpoints` skips non-allowlisted tools, so scopes never include rejected endpoints' permissions.                                                                                                                                                                                                                                                                                                                                                                                 | Medium                                                                                                                                                                                                               |
+| `src/cloud-config.ts` | `getDefaultClientId()` throws instead of returning Softeria's default. Forces `MS365_MCP_CLIENT_ID` to be set.                                                                                                                                                                                                                                                                                                                                                                                   | Low                                                                                                                                                                                                                  |
+| `package.json`        | Renamed to `@enabi/m365-mcp-server`, replaced `generate` script with `build:client`, added `audit:capabilities` script.                                                                                                                                                                                                                                                                                                                                                                          | Low                                                                                                                                                                                                                  |
+| `.gitignore`          | Removed `src/generated/client.ts` exclusion (we commit it now).                                                                                                                                                                                                                                                                                                                                                                                                                                  | Low                                                                                                                                                                                                                  |
 
 ## Files Enabi removed
 
@@ -46,6 +46,49 @@ This file lists every change Enabi has made on top of `softeria/ms-365-mcp-serve
 | `bin/generate-graph-client.mjs` | **Never run.** Would re-download the full Graph OpenAPI spec and regenerate all 270 endpoints. Kept on disk only to minimize merge conflicts. |
 | `bin/modules/*.mjs`             | Same — supporting modules for the disabled generator.                                                                                         |
 | `src/lib/teams-url-parser.ts`   | Still on disk but no longer imported anywhere. Safe to delete in a future cleanup.                                                            |
+
+## Mail composition invariants
+
+Two silent-corruption bugs that bit us repeatedly in real customer threads. Both
+are enforced in `src/graph-tools.ts` rather than only documented in `llmTip`,
+because in both cases the Graph API returns a healthy-looking response and the
+damage is only visible in the recipient's mailbox.
+
+### 1. `comment` lands inside an HTML document
+
+`createReply`, `createReplyAll`, `createForward` and their send-immediately and
+shared-mailbox siblings accept either `comment` or `Message.body`, never both.
+`Message.body` replaces the whole draft and discards the quoted history, so
+`comment` is the correct field for a normal reply. Graph then inserts `comment`
+verbatim into an HTML document, directly after `<body>` and before the `<hr>`
+that precedes the quoted thread.
+
+Consequence: plain-text newlines are whitespace. A multi-paragraph reply
+collapses into a single paragraph, with no error and no sign of trouble in the
+API response. HTML passed in `comment` is not escaped, so `<p>`, `<br />` and
+`<a href>` all render.
+
+`normalizeCommentHtml` converts a `comment` that contains newlines and no HTML
+tags into `<p>` paragraphs, with single newlines becoming `<br />` and
+HTML-significant characters escaped. A `comment` that already contains markup is
+left untouched. Opt out with `MS365_MCP_DISABLE_COMMENT_HTML=true`.
+
+Quick way to tell a correctly rendered draft from a collapsed one without
+pulling the whole body: a good draft's `bodyPreview` contains real `\r\n\r\n`
+breaks.
+
+### 2. A reply composed as a new message loses the thread
+
+`send-mail`, `create-draft-email`, `send-shared-mailbox-mail` and
+`create-shared-mailbox-draft` compose a NEW message. It carries no `In-Reply-To`
+or `References` headers, so it starts its own conversation even when the subject
+says `RE:`. The recipient sees an orphan mail beside the thread it belongs to.
+
+`replySubjectWarning` flags a subject matching `^(re|sv|aw|antw|vs):`. On the two
+send tools the call is refused before it reaches Graph, because a send is
+irreversible. On the two draft tools the call proceeds and a warning is appended
+to the tool response, because a draft can be deleted. Opt out with
+`MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD=true`.
 
 ## Invariants the upstream-sync review must verify
 
