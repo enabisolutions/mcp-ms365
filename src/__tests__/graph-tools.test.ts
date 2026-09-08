@@ -1589,6 +1589,30 @@ describe('graph-tools', () => {
     });
   });
 
+  describe('signature marker insertion', () => {
+    it('appends a marker-wrapped signature to html with none present', async () => {
+      const { insertSignatureBlock } = await loadModule();
+      const result = insertSignatureBlock('<p>Hello</p>', '<p>Sig</p>');
+      expect(result).toBe('<p>Hello</p><!--ms365-signature--><p>Sig</p><!--/ms365-signature-->');
+    });
+
+    it('replaces an existing signature block rather than stacking a second one', async () => {
+      const { insertSignatureBlock } = await loadModule();
+      const withOld = '<p>Hello</p><!--ms365-signature--><p>Old sig</p><!--/ms365-signature-->';
+      const result = insertSignatureBlock(withOld, '<p>New sig</p>');
+      expect(result).toBe(
+        '<p>Hello</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
+      );
+    });
+
+    it('is idempotent across repeated calls with the same signature', async () => {
+      const { insertSignatureBlock } = await loadModule();
+      const once = insertSignatureBlock('<p>Hello</p>', '<p>Sig</p>');
+      const twice = insertSignatureBlock(once, '<p>Sig</p>');
+      expect(twice).toBe(once);
+    });
+  });
+
   describe('utility tools in read-only mode', () => {
     it('skips utility tools whose readOnlyHint is not true', async () => {
       mockEndpoints.length = 0;

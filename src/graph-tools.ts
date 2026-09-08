@@ -342,6 +342,18 @@ export function loadSignatureConfig(address: string): {
   }
 }
 
+const SIGNATURE_MARKER_PATTERN = /<!--ms365-signature-->[\s\S]*?<!--\/ms365-signature-->/;
+
+/**
+ * Idempotent signature insertion: strips any prior marker-wrapped block
+ * before appending the current one, so a retried call or a second edit of
+ * the same draft never stacks duplicates.
+ */
+export function insertSignatureBlock(html: string, signatureHtml: string): string {
+  const withoutOldSignature = html.replace(SIGNATURE_MARKER_PATTERN, '');
+  return `${withoutOldSignature}<!--ms365-signature-->${signatureHtml}<!--/ms365-signature-->`;
+}
+
 type TextContent = {
   type: 'text';
   text: string;
