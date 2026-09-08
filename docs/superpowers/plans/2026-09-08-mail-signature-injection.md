@@ -930,7 +930,8 @@ the signature's own newlines as more text to convert).
 
     const result = await server.tools.get('create-reply-draft')!.handler({
       messageId: 'MSG123',
-      body: { comment: 'Tack', signature: 'none' },
+      body: { comment: 'Tack' },
+      signature: 'none',
     });
 
     const [, options] = graphClient.graphRequest.mock.calls[0];
