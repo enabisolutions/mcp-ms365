@@ -161,5 +161,9 @@ CLAUDE.md
 # MCP configuration (contains sensitive keys)
 .mcp.json
 
+# Per-address email signature HTML (address-specific, PII-adjacent — phone
+# numbers, headshots). config/signatures/README.md stays tracked.
+config/signatures/*.json
+
 # Finder metadata files
 .DS_Store
