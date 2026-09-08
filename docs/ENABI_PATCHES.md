@@ -101,7 +101,7 @@ sent, carried no signature at either point).
 (see that file's own README) and appends the `new` or `reply` variant —
 whichever matches the tool being called — wrapped in a
 `<!--ms365-signature--> ... <!--/ms365-signature-->` marker so a retried
-call or a repeated draft edit never stacks a second copy. Runs after
+call never stacks a second copy. Runs after
 `normalizeCommentHtml`, since a signature is HTML and must not be
 paragraph-wrapped as if it were more of the caller's text.
 

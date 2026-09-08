@@ -1587,6 +1587,29 @@ describe('graph-tools', () => {
       const result = loadSignatureConfig('broken@enabi.io');
       expect(result).toEqual({ config: undefined, fileExists: true });
     });
+
+    it('rejects a path-traversal-shaped address without touching the filesystem outside signaturesDir', async () => {
+      const { loadSignatureConfig } = await loadModule();
+      expect(() => loadSignatureConfig('../../../etc/passwd')).not.toThrow();
+      const result = loadSignatureConfig('../../../etc/passwd');
+      expect(result).toEqual({ config: undefined, fileExists: false });
+    });
+
+    it('never reads a real file reachable only via traversal out of signaturesDir', async () => {
+      // tmpDir is <os.tmpdir()>/ms365-sig-test-XXXXXX. Plant a real,
+      // parseable signature file one level up, outside signaturesDir, and
+      // prove a crafted address that would traverse to it is refused.
+      const secretName = `ms365-secret-${path.basename(tmpDir)}`;
+      const secretPath = path.join(path.dirname(tmpDir), `${secretName}.json`);
+      fs.writeFileSync(secretPath, JSON.stringify({ new: '<p>exfiltrated</p>' }));
+      try {
+        const { loadSignatureConfig } = await loadModule();
+        const result = loadSignatureConfig(`../${secretName}`);
+        expect(result).toEqual({ config: undefined, fileExists: false });
+      } finally {
+        fs.rmSync(secretPath, { force: true });
+      }
+    });
   });
 
   describe('signature marker insertion', () => {
@@ -1701,6 +1724,32 @@ describe('graph-tools', () => {
       expect(messageBody.contentType).toBe('html');
       expect(messageBody.content).toBe(
         '<p>Rad ett</p><p>Rad två</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
+      );
+    });
+
+    it('appends the signature directly (no <p> wrap) to a single-line text body with no newlines', async () => {
+      mockEndpoints.push(sendMailEndpoint());
+      mockEndpointsJson = [sendMailConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('send-mail')!.handler({
+        body: {
+          message: {
+            subject: 'Hej',
+            body: { contentType: 'text', content: 'Tack, Daniel' },
+          },
+        },
+      });
+
+      const sent = parseSentBody(graphClient);
+      const message = sent.message as Record<string, unknown>;
+      const messageBody = message.body as Record<string, unknown>;
+      expect(messageBody.contentType).toBe('html');
+      expect(messageBody.content).toBe(
+        'Tack, Daniel<!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
       );
     });
 

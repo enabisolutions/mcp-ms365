@@ -12,7 +12,6 @@ import AuthManager, {
 import { api } from './generated/client.js';
 import { z } from 'zod';
 import { readFileSync } from 'fs';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { TOOL_CATEGORIES } from './tool-categories.js';
@@ -302,6 +301,12 @@ function signaturesDir(): string {
   return process.env.MS365_MCP_SIGNATURES_DIR || path.join(process.cwd(), 'config', 'signatures');
 }
 
+// Permissive-but-safe: rejects path separators and `..` segments while
+// still matching every realistic address this codebase uses (verified
+// against daniel@enabi.io and the other addresses used in this file's own
+// tests).
+const PLAUSIBLE_EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$/;
+
 /**
  * Reads config/signatures/<address>.json. fileExists is reported
  * separately from config because a malformed file still counts as
@@ -310,15 +315,26 @@ function signaturesDir(): string {
  * nudging them toward the generator again would be noise, not help.
  * Never throws: a missing directory, missing file, or parse failure all
  * resolve to a normal return value.
+ *
+ * `address` can originate from caller-influenced input (e.g. a shared-
+ * mailbox tool's `userId` param, which is an unconstrained `z.string()` in
+ * the generated client). An address that doesn't look like a plausible
+ * email is rejected before it ever reaches the filesystem, so a crafted
+ * value like `../../../etc/passwd` can't be used for path traversal — it's
+ * treated the same as "no file", since an implausible address was never
+ * going to have a legitimate signature file anyway.
  */
 export function loadSignatureConfig(address: string): {
   config: SignatureConfig | undefined;
   fileExists: boolean;
 } {
+  if (!PLAUSIBLE_EMAIL_PATTERN.test(address)) {
+    return { config: undefined, fileExists: false };
+  }
   const filePath = path.join(signaturesDir(), `${address}.json`);
   let raw: string;
   try {
-    raw = fs.readFileSync(filePath, 'utf8');
+    raw = readFileSync(filePath, 'utf8');
   } catch {
     return { config: undefined, fileExists: false };
   }
@@ -342,7 +358,7 @@ export function loadSignatureConfig(address: string): {
   }
 }
 
-const SIGNATURE_MARKER_PATTERN = /<!--ms365-signature-->[\s\S]*?<!--\/ms365-signature-->/;
+const SIGNATURE_MARKER_PATTERN = /<!--ms365-signature-->[\s\S]*?<!--\/ms365-signature-->/g;
 
 /**
  * Idempotent signature insertion: strips any prior marker-wrapped block
@@ -412,8 +428,18 @@ function applySignature(
     // an operator identity anyone has actually set up a signature for —
     // personal-mailbox tools don't define a userId param at all, so this is
     // a reliable "was this a shared-mailbox call" signal, not a new
-    // per-address exclusion list. Missing config there is the expected
-    // default, not "first time", so it gets no advisory either.
+    // per-address exclusion list. That guarantee holds on the normal
+    // server.tool() registration path, where the MCP SDK wraps the
+    // parameter schema in z.object() and strips unrecognized keys by
+    // default. It does NOT hold under registerDiscoveryTools's
+    // `execute-tool`, whose `parameters: z.record(z.any())` passes
+    // parameters through to executeGraphTool unvalidated — a caller there
+    // could attach a `userId` to a personal-mailbox tool and trip this
+    // signal on a call that isn't really shared-mailbox. loadSignatureConfig
+    // bounds the practical impact: even a crafted userId under discovery
+    // mode can only ever load a real, validly-named signature file, never
+    // read an arbitrary path. Missing config here is the expected default,
+    // not "first time", so it gets no advisory either.
     const isSharedMailboxAddress = typeof params.userId === 'string' && params.userId.length > 0;
     const advisory =
       fileExists || isSharedMailboxAddress
