@@ -12,6 +12,7 @@ import AuthManager, {
 import { api } from './generated/client.js';
 import { z } from 'zod';
 import { readFileSync } from 'fs';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { TOOL_CATEGORIES } from './tool-categories.js';
@@ -263,6 +264,82 @@ function replySubjectWarning(
       `original conversation and breaks threading for the recipient. Use ${alternatives}. ` +
       'If this really is a new message, set MS365_MCP_DISABLE_REPLY_SUBJECT_GUARD=true.',
   };
+}
+
+/**
+ * Which mailbox address's signature applies to this call.
+ *
+ * A shared-mailbox tool's own userId path parameter is the mailbox
+ * actually being sent from — params.account and
+ * MS365_MCP_EXPECTED_USERNAME describe the caller's identity, not the
+ * mailbox, and are irrelevant there. For /me/* tools, params.account
+ * (multi-account mode) wins over the single-account identity pin.
+ * Undefined means "don't guess" — no signature, no advisory.
+ */
+export function resolveSignatureAddress(
+  toolName: string,
+  params: Record<string, unknown>
+): string | undefined {
+  const sharedEntry = NEW_MESSAGE_TOOLS.get(toolName);
+  if (sharedEntry?.shared || COMMENT_IS_HTML_TOOLS.has(toolName)) {
+    const userId = params.userId;
+    if (typeof userId === 'string' && userId.length > 0) {
+      return userId;
+    }
+  }
+  const account = params.account;
+  if (typeof account === 'string' && account.length > 0) {
+    return account;
+  }
+  const expectedUsername = process.env.MS365_MCP_EXPECTED_USERNAME;
+  return expectedUsername && expectedUsername.length > 0 ? expectedUsername : undefined;
+}
+
+type SignatureVariant = 'new' | 'reply';
+type SignatureConfig = { new?: string; reply?: string };
+
+function signaturesDir(): string {
+  return process.env.MS365_MCP_SIGNATURES_DIR || path.join(process.cwd(), 'config', 'signatures');
+}
+
+/**
+ * Reads config/signatures/<address>.json. fileExists is reported
+ * separately from config because a malformed file still counts as
+ * "this address has been configured" for the first-time-setup advisory
+ * (Task 6) — the operator has already engaged with the mechanism, so
+ * nudging them toward the generator again would be noise, not help.
+ * Never throws: a missing directory, missing file, or parse failure all
+ * resolve to a normal return value.
+ */
+export function loadSignatureConfig(address: string): {
+  config: SignatureConfig | undefined;
+  fileExists: boolean;
+} {
+  const filePath = path.join(signaturesDir(), `${address}.json`);
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return { config: undefined, fileExists: false };
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { config: undefined, fileExists: true };
+    }
+    const record = parsed as Record<string, unknown>;
+    const config: SignatureConfig = {};
+    if (typeof record.new === 'string' && record.new.length > 0) {
+      config.new = record.new;
+    }
+    if (typeof record.reply === 'string' && record.reply.length > 0) {
+      config.reply = record.reply;
+    }
+    return { config, fileExists: true };
+  } catch (error) {
+    logger.warn(`Malformed signature file ${filePath}: ${(error as Error).message}`);
+    return { config: undefined, fileExists: true };
+  }
 }
 
 type TextContent = {

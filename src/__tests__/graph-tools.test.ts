@@ -1,5 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * We test executeGraphTool logic by importing it indirectly through registerGraphTools.
@@ -1491,6 +1494,98 @@ describe('graph-tools', () => {
       });
 
       expect(graphClient.graphRequest).toHaveBeenCalled();
+    });
+  });
+
+  describe('signature address resolution', () => {
+    const ORIGINAL_ENV = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...ORIGINAL_ENV };
+    });
+
+    it('uses the userId path param for a shared-mailbox tool over account or env', async () => {
+      process.env.MS365_MCP_EXPECTED_USERNAME = 'daniel@enabi.io';
+      const { resolveSignatureAddress } = await loadModule();
+      expect(
+        resolveSignatureAddress('reply-shared-mailbox-mail', {
+          userId: 'finance@enabi.io',
+          account: 'someone-else@enabi.io',
+        })
+      ).toBe('finance@enabi.io');
+    });
+
+    it('uses params.account for a personal-mailbox tool when present', async () => {
+      process.env.MS365_MCP_EXPECTED_USERNAME = 'daniel@enabi.io';
+      const { resolveSignatureAddress } = await loadModule();
+      expect(resolveSignatureAddress('send-mail', { account: 'colleague@enabi.io' })).toBe(
+        'colleague@enabi.io'
+      );
+    });
+
+    it('falls back to MS365_MCP_EXPECTED_USERNAME when no account param is given', async () => {
+      process.env.MS365_MCP_EXPECTED_USERNAME = 'daniel@enabi.io';
+      const { resolveSignatureAddress } = await loadModule();
+      expect(resolveSignatureAddress('send-mail', {})).toBe('daniel@enabi.io');
+    });
+
+    it('returns undefined when neither account nor MS365_MCP_EXPECTED_USERNAME is set', async () => {
+      delete process.env.MS365_MCP_EXPECTED_USERNAME;
+      const { resolveSignatureAddress } = await loadModule();
+      expect(resolveSignatureAddress('send-mail', {})).toBeUndefined();
+    });
+  });
+
+  describe('signature config loading', () => {
+    const ORIGINAL_ENV = { ...process.env };
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ms365-sig-test-'));
+      process.env.MS365_MCP_SIGNATURES_DIR = tmpDir;
+    });
+
+    afterEach(() => {
+      process.env = { ...ORIGINAL_ENV };
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('reports fileExists=false and config=undefined when no file is present', async () => {
+      const { loadSignatureConfig } = await loadModule();
+      const result = loadSignatureConfig('nobody@enabi.io');
+      expect(result).toEqual({ config: undefined, fileExists: false });
+    });
+
+    it('loads a valid two-key file', async () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'daniel@enabi.io.json'),
+        JSON.stringify({ new: '<p>new sig</p>', reply: '<p>reply sig</p>' })
+      );
+      const { loadSignatureConfig } = await loadModule();
+      const result = loadSignatureConfig('daniel@enabi.io');
+      expect(result).toEqual({
+        config: { new: '<p>new sig</p>', reply: '<p>reply sig</p>' },
+        fileExists: true,
+      });
+    });
+
+    it('loads a file with only one variant present', async () => {
+      fs.writeFileSync(
+        path.join(tmpDir, 'partial@enabi.io.json'),
+        JSON.stringify({ new: '<p>new only</p>' })
+      );
+      const { loadSignatureConfig } = await loadModule();
+      const result = loadSignatureConfig('partial@enabi.io');
+      expect(result.config?.new).toBe('<p>new only</p>');
+      expect(result.config?.reply).toBeUndefined();
+      expect(result.fileExists).toBe(true);
+    });
+
+    it('treats a malformed file as fileExists=true but config=undefined', async () => {
+      fs.writeFileSync(path.join(tmpDir, 'broken@enabi.io.json'), '{ not json');
+      const { loadSignatureConfig } = await loadModule();
+      const result = loadSignatureConfig('broken@enabi.io');
+      expect(result).toEqual({ config: undefined, fileExists: true });
     });
   });
 
