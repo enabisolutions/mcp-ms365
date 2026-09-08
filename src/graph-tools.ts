@@ -702,6 +702,7 @@ async function executeGraphTool(
           'excludeResponse',
           'timezone',
           'expandExtendedProperties',
+          'signature',
         ].includes(paramName)
       ) {
         continue;
@@ -1205,6 +1206,17 @@ export function registerGraphTools(
             'Prefer a small $top first, then paginate or narrow with $filter/$search.'
         )
         .optional();
+    }
+
+    if (SIGNATURE_HTML_TOOLS.has(tool.alias)) {
+      paramSchema['signature'] = z
+        .enum(['auto', 'none'])
+        .optional()
+        .describe(
+          "Whether to append a configured email signature. 'auto' (default) appends one if " +
+            "config/signatures/<address>.json has a matching variant; 'none' skips it entirely, " +
+            'even if one is configured.'
+        );
     }
 
     // Override OData parameter descriptions with spec-gap guidance

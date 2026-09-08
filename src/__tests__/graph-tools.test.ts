@@ -1887,6 +1887,66 @@ describe('graph-tools', () => {
     });
   });
 
+  describe('signature parameter registration', () => {
+    it('registers an optional signature enum param on a NEW_MESSAGE_TOOLS tool', async () => {
+      mockEndpoints.push({
+        method: 'post' as const,
+        path: '/me/sendMail',
+        alias: 'send-mail',
+        description: 'POST /me/sendMail',
+        requestFormat: 'json' as const,
+        parameters: [{ name: 'body', type: 'Body' as const, schema: z.any() }],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/sendMail',
+          method: 'post',
+          toolName: 'send-mail',
+          scopes: ['Mail.Send'],
+        },
+      ];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const registeredSchema = server.tools.get('send-mail')!.schema;
+      expect(registeredSchema.signature).toBeDefined();
+      // Valid values parse, an arbitrary string does not.
+      expect(registeredSchema.signature.safeParse('auto').success).toBe(true);
+      expect(registeredSchema.signature.safeParse('none').success).toBe(true);
+      expect(registeredSchema.signature.safeParse('yes-please').success).toBe(false);
+    });
+
+    it('does not register signature on a tool outside the mail-composition families', async () => {
+      mockEndpoints.push({
+        method: 'get' as const,
+        path: '/me/messages',
+        alias: 'list-mail-messages',
+        description: 'GET /me/messages',
+        requestFormat: 'json' as const,
+        parameters: [],
+        response: z.any(),
+      });
+      mockEndpointsJson = [
+        {
+          pathPattern: '/me/messages',
+          method: 'get',
+          toolName: 'list-mail-messages',
+          scopes: ['Mail.Read'],
+        },
+      ];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const registeredSchema = server.tools.get('list-mail-messages')!.schema;
+      expect(registeredSchema.signature).toBeUndefined();
+    });
+  });
+
   describe('utility tools in read-only mode', () => {
     it('skips utility tools whose readOnlyHint is not true', async () => {
       mockEndpoints.length = 0;
