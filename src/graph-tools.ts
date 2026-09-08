@@ -407,11 +407,20 @@ function applySignature(
   const signatureHtml = config?.[variant];
 
   if (!signatureHtml) {
-    const advisory = fileExists
-      ? undefined
-      : `No signature configured for ${address}. Create one at ` +
-        'https://email-signature.internal.enabi.io/ and save the HTML to ' +
-        `config/signatures/${address}.json (see config/signatures/README.md).`;
+    // resolveSignatureAddress resolves a shared-mailbox call's address from
+    // its own `userId` path param (step 1 of its priority order), never from
+    // an operator identity anyone has actually set up a signature for —
+    // personal-mailbox tools don't define a userId param at all, so this is
+    // a reliable "was this a shared-mailbox call" signal, not a new
+    // per-address exclusion list. Missing config there is the expected
+    // default, not "first time", so it gets no advisory either.
+    const isSharedMailboxAddress = typeof params.userId === 'string' && params.userId.length > 0;
+    const advisory =
+      fileExists || isSharedMailboxAddress
+        ? undefined
+        : `No signature configured for ${address}. Create one at ` +
+          'https://email-signature.internal.enabi.io/ and save the HTML to ' +
+          `config/signatures/${address}.json (see config/signatures/README.md).`;
     return { body, advisory };
   }
 

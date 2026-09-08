@@ -1842,6 +1842,49 @@ describe('graph-tools', () => {
         .find((text: string) => text.includes('signatureSuggestion'));
       expect(advisory).toBeUndefined();
     });
+
+    it('is a silent no-op for a shared mailbox with no signature file', async () => {
+      const sharedReplyEndpoint = {
+        method: 'post' as const,
+        path: '/users/:userId/messages/:messageId/reply',
+        alias: 'reply-shared-mailbox-mail',
+        description: 'POST /users/{user-id}/messages/{message-id}/reply',
+        requestFormat: 'json' as const,
+        parameters: [
+          { name: 'userId', type: 'Path' as const, schema: z.string() },
+          { name: 'messageId', type: 'Path' as const, schema: z.string() },
+          { name: 'body', type: 'Body' as const, schema: z.any() },
+        ],
+        response: z.any(),
+      };
+      mockEndpoints.push(sharedReplyEndpoint);
+      mockEndpointsJson = [
+        {
+          pathPattern: '/users/{user-id}/messages/{message-id}/reply',
+          method: 'post',
+          toolName: 'reply-shared-mailbox-mail',
+          scopes: ['Mail.Send.Shared'],
+        },
+      ];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const result = await server.tools.get('reply-shared-mailbox-mail')!.handler({
+        userId: 'finance@enabi.io',
+        messageId: 'MSG123',
+        body: { comment: 'Tack' },
+      });
+
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      const sent = JSON.parse(options.body as string) as Record<string, unknown>;
+      expect(sent.comment).toBe('Tack');
+      const advisory = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('signatureSuggestion'));
+      expect(advisory).toBeUndefined();
+    });
   });
 
   describe('utility tools in read-only mode', () => {
