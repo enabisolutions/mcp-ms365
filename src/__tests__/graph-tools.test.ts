@@ -1703,6 +1703,145 @@ describe('graph-tools', () => {
         '<p>Rad ett</p><p>Rad två</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
       );
     });
+
+    const replyEndpoint = () => ({
+      method: 'post' as const,
+      path: '/me/messages/:messageId/createReply',
+      alias: 'create-reply-draft',
+      description: 'POST /me/messages/{message-id}/createReply',
+      requestFormat: 'json' as const,
+      parameters: [
+        { name: 'messageId', type: 'Path' as const, schema: z.string() },
+        { name: 'body', type: 'Body' as const, schema: z.any() },
+      ],
+      response: z.any(),
+    });
+    const replyConfig = () => ({
+      pathPattern: '/me/messages/{message-id}/createReply',
+      method: 'post',
+      toolName: 'create-reply-draft',
+      scopes: ['Mail.ReadWrite'],
+    });
+
+    it('appends the reply-variant signature after comment normalization', async () => {
+      mockEndpoints.push(replyEndpoint());
+      mockEndpointsJson = [replyConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('create-reply-draft')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Rad ett\n\nRad två' },
+      });
+
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      const sent = JSON.parse(options.body as string) as Record<string, unknown>;
+      expect(sent.comment).toBe(
+        '<p>Rad ett</p><p>Rad två</p><!--ms365-signature--><p>Reply sig</p><!--/ms365-signature-->'
+      );
+    });
+
+    it('does not append a signature when signature: none is passed', async () => {
+      mockEndpoints.push(replyEndpoint());
+      mockEndpointsJson = [replyConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const result = await server.tools.get('create-reply-draft')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Tack' },
+        signature: 'none',
+      });
+
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      const sent = JSON.parse(options.body as string) as Record<string, unknown>;
+      expect(sent.comment).toBe('Tack');
+      const advisory = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('signatureSuggestion'));
+      expect(advisory).toBeUndefined();
+    });
+
+    it('appends the first-time-setup advisory when no file exists for the address', async () => {
+      fs.rmSync(path.join(tmpDir, 'daniel@enabi.io.json'));
+      mockEndpoints.push(replyEndpoint());
+      mockEndpointsJson = [replyConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const result = await server.tools.get('create-reply-draft')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Tack' },
+      });
+
+      const advisory = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('signatureSuggestion'));
+      expect(advisory).toContain('email-signature.internal.enabi.io');
+      expect(advisory).toContain('daniel@enabi.io');
+    });
+
+    it('does not append the advisory when MS365_MCP_DISABLE_SIGNATURES=true', async () => {
+      fs.rmSync(path.join(tmpDir, 'daniel@enabi.io.json'));
+      process.env.MS365_MCP_DISABLE_SIGNATURES = 'true';
+      mockEndpoints.push(replyEndpoint());
+      mockEndpointsJson = [replyConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const result = await server.tools.get('create-reply-draft')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Tack' },
+      });
+
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      const sent = JSON.parse(options.body as string) as Record<string, unknown>;
+      expect(sent.comment).toBe('Tack');
+      const advisory = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('signatureSuggestion'));
+      expect(advisory).toBeUndefined();
+    });
+
+    it('does not append the advisory when the file exists but the needed variant is missing', async () => {
+      // The fixture from beforeEach has both variants; overwrite with a
+      // new-only file so the reply-tool call below hits "file exists,
+      // variant missing" rather than "no file at all".
+      fs.writeFileSync(
+        path.join(tmpDir, 'daniel@enabi.io.json'),
+        JSON.stringify({ new: '<p>New sig</p>' })
+      );
+      mockEndpoints.push(replyEndpoint());
+      mockEndpointsJson = [replyConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      const result = await server.tools.get('create-reply-draft')!.handler({
+        messageId: 'MSG123',
+        body: { comment: 'Tack' },
+      });
+
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      const sent = JSON.parse(options.body as string) as Record<string, unknown>;
+      // No reply variant configured, so comment passes through unsigned —
+      // but this is a deliberate partial config, not "never set up", so no
+      // advisory either.
+      expect(sent.comment).toBe('Tack');
+      const advisory = result.content
+        .map((item: any) => item.text)
+        .find((text: string) => text.includes('signatureSuggestion'));
+      expect(advisory).toBeUndefined();
+    });
   });
 
   describe('utility tools in read-only mode', () => {
