@@ -8,3 +8,8 @@ package-lock.json
 # Build artefacts
 dist/
 node_modules/
+
+# Subagent-driven-development scratch workspace (ledgers, briefs, reports).
+# Already gitignored via its own nested .gitignore; excluded here too since
+# prettier's CLI doesn't reliably honor a nested .gitignore for this glob.
+.superpowers/
