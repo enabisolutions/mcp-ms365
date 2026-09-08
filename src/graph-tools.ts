@@ -131,6 +131,32 @@ function escapeHtmlText(text: string): string {
 }
 
 /**
+ * Convert plain text with newlines into `<p>` paragraphs, `<br />` for
+ * single line breaks within a paragraph, HTML-significant characters
+ * escaped. Returns undefined when there's nothing to convert: no newlines,
+ * or the text already contains an HTML tag (it's the caller's own markup).
+ * Shared by normalizeCommentHtml (the `comment` field) and applySignature
+ * (a plain-text Message.body that needs upgrading to hold a signature).
+ */
+function textToHtmlParagraphs(text: string): string | undefined {
+  if (!/\r?\n/.test(text) || HTML_TAG_PATTERN.test(text)) {
+    return undefined;
+  }
+
+  const paragraphs = text
+    .split(/(?:\r?\n){2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0)
+    .map((paragraph) => escapeHtmlText(paragraph).replace(/\r?\n/g, '<br />'));
+
+  if (paragraphs.length === 0) {
+    return undefined;
+  }
+
+  return paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
+}
+
+/**
  * Convert a plain-text `comment` into HTML paragraphs before it reaches Graph.
  *
  * Only applies when the comment contains newlines and no HTML tags — a comment
@@ -155,21 +181,16 @@ function normalizeCommentHtml(toolName: string, body: unknown): unknown {
   }
   const payload = body as Record<string, unknown>;
   const comment = payload.comment;
-  if (typeof comment !== 'string' || !/\r?\n/.test(comment) || HTML_TAG_PATTERN.test(comment)) {
+  if (typeof comment !== 'string') {
     return payload;
   }
 
-  const paragraphs = comment
-    .split(/(?:\r?\n){2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter((paragraph) => paragraph.length > 0)
-    .map((paragraph) => escapeHtmlText(paragraph).replace(/\r?\n/g, '<br />'));
-
-  if (paragraphs.length === 0) {
+  const converted = textToHtmlParagraphs(comment);
+  if (converted === undefined) {
     return payload;
   }
 
-  payload.comment = paragraphs.map((paragraph) => `<p>${paragraph}</p>`).join('');
+  payload.comment = converted;
   logger.info(`Normalized plain-text comment to HTML paragraphs for ${toolName}`);
   return payload;
 }
