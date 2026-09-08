@@ -354,6 +354,104 @@ export function insertSignatureBlock(html: string, signatureHtml: string): strin
   return `${withoutOldSignature}<!--ms365-signature-->${signatureHtml}<!--/ms365-signature-->`;
 }
 
+const SIGNATURE_HTML_TOOLS = new Set<string>([
+  ...NEW_MESSAGE_TOOLS.keys(),
+  ...COMMENT_IS_HTML_TOOLS,
+]);
+
+function messageBodyContainer(body: unknown): Record<string, unknown> | undefined {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return undefined;
+  }
+  const payload = body as Record<string, unknown>;
+  const nested = payload.message;
+  return nested && typeof nested === 'object' && !Array.isArray(nested)
+    ? (nested as Record<string, unknown>)
+    : payload;
+}
+
+/**
+ * Injects the resolved address's `new` or `reply` signature into the
+ * outgoing body, and reports a first-time-setup advisory when the
+ * address has no signature file at all. Never mutates in a way that
+ * fails the call: every branch that can't safely apply a signature
+ * returns the body unchanged.
+ *
+ * Must run after normalizeCommentHtml — a signature is HTML, and
+ * inserting it into a comment that later got paragraph-wrapped would
+ * mangle the signature markup.
+ */
+function applySignature(
+  toolName: string,
+  body: unknown,
+  params: Record<string, unknown>
+): { body: unknown; advisory?: string } {
+  if (!SIGNATURE_HTML_TOOLS.has(toolName)) {
+    return { body };
+  }
+  if (process.env.MS365_MCP_DISABLE_SIGNATURES === 'true') {
+    return { body };
+  }
+  const requestedSignature = params.signature;
+  if (requestedSignature === 'none') {
+    return { body };
+  }
+
+  const address = resolveSignatureAddress(toolName, params);
+  if (!address) {
+    return { body };
+  }
+
+  const { config, fileExists } = loadSignatureConfig(address);
+  const variant: SignatureVariant = COMMENT_IS_HTML_TOOLS.has(toolName) ? 'reply' : 'new';
+  const signatureHtml = config?.[variant];
+
+  if (!signatureHtml) {
+    const advisory = fileExists
+      ? undefined
+      : `No signature configured for ${address}. Create one at ` +
+        'https://email-signature.internal.enabi.io/ and save the HTML to ' +
+        `config/signatures/${address}.json (see config/signatures/README.md).`;
+    return { body, advisory };
+  }
+
+  if (variant === 'reply') {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return { body };
+    }
+    const payload = body as Record<string, unknown>;
+    const comment = payload.comment;
+    if (typeof comment !== 'string') {
+      return { body };
+    }
+    payload.comment = insertSignatureBlock(comment, signatureHtml);
+    return { body: payload };
+  }
+
+  const container = messageBodyContainer(body);
+  if (!container) {
+    return { body };
+  }
+  const existingBody = container.body;
+  const bodyContainer =
+    existingBody && typeof existingBody === 'object' && !Array.isArray(existingBody)
+      ? (existingBody as Record<string, unknown>)
+      : {};
+  const currentContent = typeof bodyContainer.content === 'string' ? bodyContainer.content : '';
+  const currentContentType = bodyContainer.contentType;
+
+  let htmlContent: string;
+  if (currentContentType === 'html') {
+    htmlContent = currentContent;
+  } else {
+    htmlContent = textToHtmlParagraphs(currentContent) ?? escapeHtmlText(currentContent);
+    bodyContainer.contentType = 'html';
+  }
+  bodyContainer.content = insertSignatureBlock(htmlContent, signatureHtml);
+  container.body = bodyContainer;
+  return { body };
+}
+
 type TextContent = {
   type: 'text';
   text: string;
@@ -712,6 +810,9 @@ async function executeGraphTool(
     body = applyCreateEventDefaults(tool.alias, body);
     body = normalizeCommentHtml(tool.alias, body);
 
+    const signatureResult = applySignature(tool.alias, body, params);
+    body = signatureResult.body;
+
     const threadingWarning = replySubjectWarning(tool.alias, body);
     if (threadingWarning?.severity === 'send') {
       logger.warn(`Reply-subject guard blocked ${tool.alias}: ${threadingWarning.message}`);
@@ -937,6 +1038,13 @@ async function executeGraphTool(
       content.push({
         type: 'text' as const,
         text: JSON.stringify({ warning: threadingWarning.message }),
+      });
+    }
+
+    if (signatureResult.advisory) {
+      content.push({
+        type: 'text' as const,
+        text: JSON.stringify({ signatureSuggestion: signatureResult.advisory }),
       });
     }
 

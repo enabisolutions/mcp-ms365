@@ -1613,6 +1613,98 @@ describe('graph-tools', () => {
     });
   });
 
+  describe('signature injection', () => {
+    const ORIGINAL_ENV = { ...process.env };
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ms365-sig-inject-'));
+      process.env.MS365_MCP_SIGNATURES_DIR = tmpDir;
+      process.env.MS365_MCP_EXPECTED_USERNAME = 'daniel@enabi.io';
+      fs.writeFileSync(
+        path.join(tmpDir, 'daniel@enabi.io.json'),
+        JSON.stringify({ new: '<p>New sig</p>', reply: '<p>Reply sig</p>' })
+      );
+    });
+
+    afterEach(() => {
+      process.env = { ...ORIGINAL_ENV };
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    const sendMailEndpoint = () => ({
+      method: 'post' as const,
+      path: '/me/sendMail',
+      alias: 'send-mail',
+      description: 'POST /me/sendMail',
+      requestFormat: 'json' as const,
+      parameters: [{ name: 'body', type: 'Body' as const, schema: z.any() }],
+      response: z.any(),
+    });
+    const sendMailConfig = () => ({
+      pathPattern: '/me/sendMail',
+      method: 'post',
+      toolName: 'send-mail',
+      scopes: ['Mail.Send'],
+    });
+
+    function parseSentBody(graphClient: any): Record<string, unknown> {
+      const [, options] = graphClient.graphRequest.mock.calls[0];
+      return JSON.parse(options.body as string) as Record<string, unknown>;
+    }
+
+    it('appends the new-variant signature to an html Message.body', async () => {
+      mockEndpoints.push(sendMailEndpoint());
+      mockEndpointsJson = [sendMailConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('send-mail')!.handler({
+        body: {
+          message: {
+            subject: 'Hej',
+            body: { contentType: 'html', content: '<p>Body text</p>' },
+          },
+        },
+      });
+
+      const sent = parseSentBody(graphClient);
+      const message = sent.message as Record<string, unknown>;
+      const messageBody = message.body as Record<string, unknown>;
+      expect(messageBody.content).toBe(
+        '<p>Body text</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
+      );
+    });
+
+    it('upgrades a text Message.body to html before appending the signature', async () => {
+      mockEndpoints.push(sendMailEndpoint());
+      mockEndpointsJson = [sendMailConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('send-mail')!.handler({
+        body: {
+          message: {
+            subject: 'Hej',
+            body: { contentType: 'text', content: 'Rad ett\n\nRad två' },
+          },
+        },
+      });
+
+      const sent = parseSentBody(graphClient);
+      const message = sent.message as Record<string, unknown>;
+      const messageBody = message.body as Record<string, unknown>;
+      expect(messageBody.contentType).toBe('html');
+      expect(messageBody.content).toBe(
+        '<p>Rad ett</p><p>Rad två</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
+      );
+    });
+  });
+
   describe('utility tools in read-only mode', () => {
     it('skips utility tools whose readOnlyHint is not true', async () => {
       mockEndpoints.length = 0;
