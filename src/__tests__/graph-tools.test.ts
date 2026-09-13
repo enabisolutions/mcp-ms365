@@ -1534,6 +1534,50 @@ describe('graph-tools', () => {
       const { resolveSignatureAddress } = await loadModule();
       expect(resolveSignatureAddress('send-mail', {})).toBeUndefined();
     });
+
+    it('falls back to the authenticated mailbox when no account param or env pin exists', async () => {
+      delete process.env.MS365_MCP_EXPECTED_USERNAME;
+      const { resolveSignatureAddress } = await loadModule();
+      expect(resolveSignatureAddress('send-mail', {}, 'daniel@enabi.io')).toBe('daniel@enabi.io');
+    });
+
+    it('prefers params.account and the env pin over the authenticated mailbox', async () => {
+      const { resolveSignatureAddress } = await loadModule();
+      delete process.env.MS365_MCP_EXPECTED_USERNAME;
+      expect(
+        resolveSignatureAddress('send-mail', { account: 'colleague@enabi.io' }, 'daniel@enabi.io')
+      ).toBe('colleague@enabi.io');
+      process.env.MS365_MCP_EXPECTED_USERNAME = 'pinned@enabi.io';
+      expect(resolveSignatureAddress('send-mail', {}, 'daniel@enabi.io')).toBe('pinned@enabi.io');
+    });
+  });
+
+  describe('signature directory resolution', () => {
+    const ORIGINAL_ENV = { ...process.env };
+    const ORIGINAL_CWD = process.cwd();
+
+    afterEach(() => {
+      process.env = { ...ORIGINAL_ENV };
+      process.chdir(ORIGINAL_CWD);
+    });
+
+    it('resolves to the package config dir, not the working directory', async () => {
+      delete process.env.MS365_MCP_SIGNATURES_DIR;
+      const { signaturesDir } = await loadModule();
+      const fromPackageRoot = signaturesDir();
+      expect(fromPackageRoot).toBe(path.join(ORIGINAL_CWD, 'config', 'signatures'));
+
+      // The regression: an MCP server started from another repo used to look
+      // for signatures under that repo and silently find none.
+      process.chdir(os.tmpdir());
+      expect(signaturesDir()).toBe(fromPackageRoot);
+    });
+
+    it('still honours MS365_MCP_SIGNATURES_DIR as an override', async () => {
+      process.env.MS365_MCP_SIGNATURES_DIR = '/tmp/somewhere-else';
+      const { signaturesDir } = await loadModule();
+      expect(signaturesDir()).toBe('/tmp/somewhere-else');
+    });
   });
 
   describe('signature config loading', () => {
@@ -1689,6 +1733,31 @@ describe('graph-tools', () => {
           message: {
             subject: 'Hej',
             body: { contentType: 'html', content: '<p>Body text</p>' },
+          },
+        },
+      });
+
+      const sent = parseSentBody(graphClient);
+      const message = sent.message as Record<string, unknown>;
+      const messageBody = message.body as Record<string, unknown>;
+      expect(messageBody.content).toBe(
+        '<p>Body text</p><!--ms365-signature--><p>New sig</p><!--/ms365-signature-->'
+      );
+    });
+
+    it("treats contentType 'HTML' as html and leaves the caller's markup unescaped", async () => {
+      mockEndpoints.push(sendMailEndpoint());
+      mockEndpointsJson = [sendMailConfig()];
+      const graphClient = createMockGraphClient([{ content: [{ type: 'text', text: '{}' }] }]);
+      const server = createMockServer();
+      const { registerGraphTools } = await loadModule();
+      registerGraphTools(server as any, graphClient as any);
+
+      await server.tools.get('send-mail')!.handler({
+        body: {
+          message: {
+            subject: 'Hej',
+            body: { contentType: 'HTML', content: '<p>Body text</p>' },
           },
         },
       });

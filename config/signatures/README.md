@@ -37,12 +37,18 @@ just the signature.
 ## Which address gets used
 
 Resolved per call: a shared-mailbox tool uses its own mailbox address; a
-personal (`/me`) tool uses the caller's `account` parameter if given,
-otherwise the server's `MS365_MCP_EXPECTED_USERNAME`. See
+personal (`/me`) tool uses the caller's `account` parameter if given, then
+the server's `MS365_MCP_EXPECTED_USERNAME`, then the mailbox the server is
+actually signed in as. That last fallback matters on a normal single-account
+stdio setup, where neither of the first two is set. See
 `docs/ENABI_PATCHES.md`, "Mail composition invariants," for the full
 mechanism.
 
 ## Relocating this directory
 
 Set `MS365_MCP_SIGNATURES_DIR` to point somewhere else. Defaults to
-`config/signatures` under the process's working directory.
+`config/signatures` inside the installed package, resolved from the server's
+own module path. It is deliberately not relative to the working directory: a
+stdio MCP server inherits its cwd from whichever client spawned it, so a
+cwd-relative default silently found no signatures whenever the client was
+started from another directory.

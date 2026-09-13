@@ -105,13 +105,25 @@ call never stacks a second copy. Runs after
 `normalizeCommentHtml`, since a signature is HTML and must not be
 paragraph-wrapped as if it were more of the caller's text.
 
+The address is resolved from the shared mailbox's own `userId`, else
+`params.account`, else `MS365_MCP_EXPECTED_USERNAME`, else the mailbox the
+server is authenticated as (`AuthManager.getCurrentAccount()`, or the upn on
+the request token in OAuth mode). Without that last fallback a plain
+single-account stdio call resolved to no address at all and skipped the
+signature silently, advisory included (2026-09-13).
+
 No file for the resolved address produces an advisory content item
 pointing at the internal signature generator
 (`https://email-signature.internal.enabi.io/`) rather than an error — this
-is opt-in by nature, not a requirement to run the server. Opt out per call
+is opt-in by nature, not a requirement to run the server. The advisory is
+its own content item, so it survives `excludeResponse: true`; every skipped
+signature is also logged at warn level, because a silently unsigned draft
+looks identical to a successful one. Opt out per call
 with `signature: 'none'`, or globally with
 `MS365_MCP_DISABLE_SIGNATURES=true`. Relocate the config directory with
-`MS365_MCP_SIGNATURES_DIR`.
+`MS365_MCP_SIGNATURES_DIR`; it defaults to `config/signatures` resolved from
+the server's own module path, never from `process.cwd()`, which a stdio
+server inherits from its client.
 
 ## Invariants the upstream-sync review must verify
 

@@ -272,12 +272,18 @@ function replySubjectWarning(
  * actually being sent from — params.account and
  * MS365_MCP_EXPECTED_USERNAME describe the caller's identity, not the
  * mailbox, and are irrelevant there. For /me/* tools, params.account
- * (multi-account mode) wins over the single-account identity pin.
+ * (multi-account mode) wins over the single-account identity pin, which in
+ * turn wins over `fallbackAddress` — the mailbox the caller is actually
+ * authenticated as, passed in by executeGraphTool. That fallback exists
+ * because neither params.account nor MS365_MCP_EXPECTED_USERNAME is set on a
+ * normal single-account stdio call, which used to resolve to undefined and
+ * skip the signature silently, advisory included.
  * Undefined means "don't guess" — no signature, no advisory.
  */
 export function resolveSignatureAddress(
   toolName: string,
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  fallbackAddress?: string
 ): string | undefined {
   const sharedEntry = NEW_MESSAGE_TOOLS.get(toolName);
   if (sharedEntry?.shared || COMMENT_IS_HTML_TOOLS.has(toolName)) {
@@ -291,14 +297,26 @@ export function resolveSignatureAddress(
     return account;
   }
   const expectedUsername = process.env.MS365_MCP_EXPECTED_USERNAME;
-  return expectedUsername && expectedUsername.length > 0 ? expectedUsername : undefined;
+  if (expectedUsername && expectedUsername.length > 0) {
+    return expectedUsername;
+  }
+  return fallbackAddress && fallbackAddress.length > 0 ? fallbackAddress : undefined;
 }
 
 type SignatureVariant = 'new' | 'reply';
 type SignatureConfig = { new?: string; reply?: string };
 
-function signaturesDir(): string {
-  return process.env.MS365_MCP_SIGNATURES_DIR || path.join(process.cwd(), 'config', 'signatures');
+/**
+ * Resolved from this module's own location, never from process.cwd(): a
+ * stdio MCP server inherits its working directory from whichever client
+ * spawned it, so the cwd-relative path used to point at whatever repo the
+ * operator happened to be sitting in, find no directory, and turn every
+ * signature into a silent no-op. __dirname is <package>/src under tsx and
+ * <package>/dist in the build, so one level up is the package root in both.
+ * MS365_MCP_SIGNATURES_DIR still overrides, e.g. in tests.
+ */
+export function signaturesDir(): string {
+  return process.env.MS365_MCP_SIGNATURES_DIR || path.join(__dirname, '..', 'config', 'signatures');
 }
 
 // Permissive-but-safe: rejects path separators and `..` segments while
@@ -387,6 +405,41 @@ function messageBodyContainer(body: unknown): Record<string, unknown> | undefine
 }
 
 /**
+ * The mailbox address the caller is actually authenticated as, used as the
+ * last resort by resolveSignatureAddress. In OAuth/HTTP mode that is the upn
+ * already parsed off the request token; in stdio mode it comes from the MSAL
+ * account the request will run as. Only resolved for tools that can carry a
+ * signature at all, so no other tool call pays for a token-cache read, and
+ * never throws: a failure here just means no fallback address.
+ */
+async function resolveActiveMailboxAddress(
+  toolName: string,
+  params: Record<string, unknown>,
+  upn: string | undefined,
+  authManager?: AuthManager
+): Promise<string | undefined> {
+  if (!SIGNATURE_HTML_TOOLS.has(toolName)) {
+    return undefined;
+  }
+  if (process.env.MS365_MCP_DISABLE_SIGNATURES === 'true' || params.signature === 'none') {
+    return undefined;
+  }
+  if (upn) {
+    return upn;
+  }
+  if (!authManager) {
+    return undefined;
+  }
+  try {
+    const account = await authManager.getCurrentAccount();
+    return account?.username || undefined;
+  } catch (err) {
+    logger.warn(`Could not resolve the active account for a signature lookup: ${err}`);
+    return undefined;
+  }
+}
+
+/**
  * Injects the resolved address's `new` or `reply` signature into the
  * outgoing body, and reports a first-time-setup advisory when the
  * address has no signature file at all. Never mutates in a way that
@@ -400,7 +453,8 @@ function messageBodyContainer(body: unknown): Record<string, unknown> | undefine
 function applySignature(
   toolName: string,
   body: unknown,
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  fallbackAddress?: string
 ): { body: unknown; advisory?: string } {
   if (!SIGNATURE_HTML_TOOLS.has(toolName)) {
     return { body };
@@ -413,8 +467,12 @@ function applySignature(
     return { body };
   }
 
-  const address = resolveSignatureAddress(toolName, params);
+  const address = resolveSignatureAddress(toolName, params, fallbackAddress);
   if (!address) {
+    logger.warn(
+      `No signature applied to ${toolName}: could not resolve which mailbox address is sending. ` +
+        'Pass an `account` param, or set MS365_MCP_EXPECTED_USERNAME.'
+    );
     return { body };
   }
 
@@ -447,6 +505,14 @@ function applySignature(
         : `No signature configured for ${address}. Create one at ` +
           'https://email-signature.internal.enabi.io/ and save the HTML to ' +
           `config/signatures/${address}.json (see config/signatures/README.md).`;
+    // Logged as well as returned: the advisory rides back as its own content
+    // item, but a caller reading only the first item (or passing
+    // excludeResponse) can still miss it, and a silently unsigned draft is
+    // exactly the failure this whole path exists to make visible.
+    logger.warn(
+      `No ${variant} signature applied to ${toolName} for ${address}` +
+        ` (looked in ${signaturesDir()}).`
+    );
     return { body, advisory };
   }
 
@@ -473,7 +539,13 @@ function applySignature(
       ? (existingBody as Record<string, unknown>)
       : {};
   const currentContent = typeof bodyContainer.content === 'string' ? bodyContainer.content : '';
-  const currentContentType = bodyContainer.contentType;
+  // Graph treats contentType case-insensitively and callers write both 'html'
+  // and 'HTML'. Comparing the raw value sent an already-HTML body down the
+  // text branch and escaped the caller's own markup into visible tags.
+  const currentContentType =
+    typeof bodyContainer.contentType === 'string'
+      ? bodyContainer.contentType.toLowerCase()
+      : bodyContainer.contentType;
 
   let htmlContent: string;
   if (currentContentType === 'html') {
@@ -846,7 +918,12 @@ async function executeGraphTool(
     body = applyCreateEventDefaults(tool.alias, body);
     body = normalizeCommentHtml(tool.alias, body);
 
-    const signatureResult = applySignature(tool.alias, body, params);
+    const signatureResult = applySignature(
+      tool.alias,
+      body,
+      params,
+      await resolveActiveMailboxAddress(tool.alias, params, upn, authManager)
+    );
     body = signatureResult.body;
 
     const threadingWarning = replySubjectWarning(tool.alias, body);
