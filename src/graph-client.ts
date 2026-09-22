@@ -68,6 +68,21 @@ interface McpResponse {
   [key: string]: unknown;
 }
 
+/**
+ * Render request options for a log line without the bearer token.
+ *
+ * `options.accessToken` is a live Microsoft Graph access token. Before
+ * 2026-09-22 `graphRequest` logged the whole options object, so every Graph
+ * call wrote the token in cleartext to ~/.ms-365-mcp-server/logs/mcp-server.log
+ * (10 869 lines carried one when this was found), while the neighbouring
+ * `Making graph request` line in graph-tools.ts already redacted it. Same
+ * treatment here: drop the field and say that it was present.
+ */
+export function describeOptionsForLog(options: Record<string, unknown>): string {
+  const { accessToken, ...safe } = options;
+  return `${JSON.stringify(safe)}${accessToken ? ' [accessToken=REDACTED]' : ''}`;
+}
+
 class GraphClient {
   private authManager: AuthManager;
   private secrets: AppSecrets;
@@ -203,7 +218,7 @@ class GraphClient {
 
   async graphRequest(endpoint: string, options: GraphRequestOptions = {}): Promise<McpResponse> {
     try {
-      logger.info(`Calling ${endpoint} with options: ${JSON.stringify(options)}`);
+      logger.info(`Calling ${endpoint} with options: ${describeOptionsForLog(options)}`);
 
       // Use new OAuth-aware request method
       const result = await this.makeRequest(endpoint, options);
